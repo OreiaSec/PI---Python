@@ -1,12 +1,10 @@
 from flask import Flask, render_template_string, request, redirect, url_for, flash, session
 
 app = Flask(__name__)
-app.secret_key = 'sua_chave_secreta_aqui'  # Para usar sessões e flash
+app.secret_key = 'sua_chave_secreta_aqui'
 
-# Simulação de banco de dados temporário na memória
 usuarios = {}
 
-# HTML base, simplificado para manter a estrutura funcional (pode ser melhorado)
 html_template = '''
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -16,20 +14,128 @@ html_template = '''
   <title>Interatividade com Usuário</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <style>
-    /* Estilos simplificados para o exemplo */
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b0c2a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-    .container { background: rgba(255,255,255,0.2); padding: 20px; border-radius: 15px; width: 350px; }
-    .input-group { margin-bottom: 15px; position: relative; }
-    .input-group i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #888; }
-    input, select { width: 100%; padding: 10px 10px 10px 35px; border-radius: 8px; border: none; }
-    button { width: 100%; padding: 10px; background: #007BFF; border: none; border-radius: 8px; color: white; font-size: 16px; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    .message { color: yellow; margin-bottom: 10px; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-image: url('https://i.gifer.com/se0.gif');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-color: rgba(11, 12, 42, 0.9);
+      background-blend-mode: overlay;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container, .tela1, .tela2 {
+      background-color: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.3);
+      padding: 20px;
+      border-radius: 15px;
+      width: 350px;
+      animation: fadeIn 1.5s ease forwards;
+      text-align: center;
+    }
+
+    .umbrella-img {
+      width: auto;
+      height: auto;
+      max-width: 90%;
+      max-height: 90%;
+      transform: scale(0.85);
+      margin-bottom: 10px;
+      opacity: 0;
+      animation: fadeIn 1.5s ease forwards,
+                 float 3s ease-in-out infinite,
+                 pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.5); }
+      to { opacity: 1; transform: scale(0.85); }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) scale(0.85); }
+      50% { transform: translateY(-10px) scale(0.85); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: translateY(0) scale(0.85); }
+      50% { transform: translateY(0) scale(0.95); }
+    }
+
+    h2, p, label {
+      color: white;
+      text-align: center;
+    }
+
+    .input-group {
+      position: relative;
+      width: 100%;
+      margin: 10px 0;
+    }
+
+    .input-group i {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      transform: translateY(-50%);
+      color: #888;
+    }
+
+    .input-group input, .input-group select {
+      width: 100%;
+      padding: 12px 12px 12px 36px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .input-group input:focus, .input-group select:focus {
+      border-color: #007BFF;
+      background-color: #f4faff;
+      outline: none;
+      box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 12px 25px;
+      border: none;
+      background-color: #007BFF;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease;
+      width: 100%;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .message {
+      color: yellow;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    a {
+      color: #add8e6;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
+  <img class="umbrella-img" src="https://i.pinimg.com/originals/6a/25/79/6a25795cf9f3f1f4bfb7ae07a204b6fc.png" alt="Umbrella Logo">
+
   {% with messages = get_flashed_messages() %}
     {% if messages %}
       {% for msg in messages %}
@@ -77,7 +183,7 @@ html_template = '''
       </div>
       <button type="submit">Finalizar Cadastro</button>
     </form>
-    <p>Já tem uma conta? <a href="{{ url_for('login') }}" style="color:#add8e6;">Login aqui</a></p>
+    <p>Já tem uma conta? <a href="{{ url_for('login') }}">Login aqui</a></p>
 
   {% elif page == 'login' %}
     <h2>Login</h2>
@@ -92,12 +198,12 @@ html_template = '''
       </div>
       <button type="submit">Entrar</button>
     </form>
-    <p>Não tem conta? <a href="{{ url_for('register') }}" style="color:#add8e6;">Cadastre-se aqui</a></p>
+    <p>Não tem conta? <a href="{{ url_for('register') }}">Cadastre-se aqui</a></p>
 
   {% elif page == 'welcome' %}
     <h2>Bem-vindo, {{ usuario }}!</h2>
     <p>Login realizado com sucesso.</p>
-    <a href="{{ url_for('logout') }}" style="color:#add8e6;">Sair</a>
+    <a href="{{ url_for('logout') }}">Sair</a>
   {% endif %}
 </div>
 
@@ -128,7 +234,6 @@ def register():
             flash("Usuário já cadastrado com esse e-mail.")
             return redirect(url_for('register'))
 
-        # Salvar usuário
         usuarios[email] = {
             'nome': nome,
             'cpf': cpf,
