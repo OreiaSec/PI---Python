@@ -1,3 +1,14 @@
+from flask import Flask, render_template_string, request, redirect, url_for, flash, session, send_from_directory
+import os
+
+app = Flask(__name__)
+app.secret_key = 'chave_secreta_segura'
+
+usuarios = {}
+
+
+
+
 <form method="post" action="/cadastrar">
     <!DOCTYPE html>
     <html lang="pt-br">
