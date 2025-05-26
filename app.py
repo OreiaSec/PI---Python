@@ -4,145 +4,276 @@ app = Flask(__name__)
 
 # HTML embutido
 html = '''
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro - Bubble SA</title>
-
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&display=swap" rel="stylesheet">
-
-    <!-- Font Awesome -->
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-
-    <style>
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <title>Interatividade com Usuário</title>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    
+      <style>
+        * {
+          box-sizing: border-box;
+        }
+    
         body {
-            margin: 0;
-            font-family: 'Poppins', sans-serif;
-            background: url("/static/fundo.png") no-repeat center center fixed;
-            background-size: cover;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          margin: 0;
+          padding: 0;
+          background-image: url('https://i.gifer.com/se0.gif');
+          background-size: cover;
+          background-position: center;
+          background-repeat: repeat;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
         }
-
-        .container {
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            max-width: 400px;
-            width: 100%;
-            text-align: center;
+    
+        .loading-screen, .container, .tela1, .tela2 {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(11, 12, 42, 0.9);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          transition: opacity 1s ease-in-out;
+          z-index: 10;
         }
-
-        .container img {
-            width: 100px;
-            margin-bottom: 20px;
+    
+        .container, .tela1, .tela2 {
+          background-color: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(10px);
+          box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.3);
+          width: 90%;
+          max-width: 450px;
+          border-radius: 20px;
+          padding: 30px 20px;
+          display: none;
         }
-
-        .container h2 {
-            color: #fff;
-            margin-bottom: 25px;
+    
+        .umbrella-img {
+          width: auto;
+          height: auto;
+          max-width: 90%;
+          max-height: 90%;
+          transform: scale(0.85);
+          margin-bottom: 10px;
+          opacity: 0;
+          animation: fadeIn 1.5s ease forwards,
+                     float 3s ease-in-out infinite,
+                     pulse 1s ease-in-out infinite;
         }
-
-        .input-field {
-            display: flex;
-            align-items: center;
-            background-color: #fff;
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 15px;
+    
+        @keyframes fadeIn {
+          from { opacity: 0; transform: scale(0.5); }
+          to { opacity: 1; transform: scale(0.85); }
         }
-
-        .input-field i {
-            margin-right: 10px;
-            color: #333;
+    
+        @keyframes float {
+          0%, 100% { transform: translateY(0) scale(0.85); }
+          50% { transform: translateY(-10px) scale(0.85); }
         }
-
-        .input-field input {
-            border: none;
-            outline: none;
-            width: 100%;
-            font-size: 16px;
-            background: none;
+    
+        @keyframes pulse {
+          0%, 100% { transform: translateY(0) scale(0.85); }
+          50% { transform: translateY(0) scale(0.95); }
         }
-
-        .btn {
-            background-color: #007bff;
-            color: white;
-            padding: 12px;
-            width: 100%;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
+    
+        h2, p, label {
+          color: white;
         }
-
-        .btn:hover {
-            background-color: #0056b3;
+    
+        .input-group {
+          position: relative;
+          width: 100%;
+          margin: 10px 0;
         }
-    </style>
-</head>
-
-<body>
-
-    <div class="container">
-        <img src="/static/Bubble SA - PNG.png" alt="Logo">
-
-        <h2>Cadastro</h2>
-
-        <form method="POST" action="/cadastrar">
-            <div class="input-field">
-                <i class="fa fa-user"></i>
-                <input type="text" name="nome" placeholder="Nome completo" required>
-            </div>
-
-            <div class="input-field">
-                <i class="fa fa-id-card"></i>
-                <input type="text" name="cpf" placeholder="CPF" required>
-            </div>
-
-            <div class="input-field">
-                <i class="fa fa-phone"></i>
-                <input type="tel" name="telefone" placeholder="Telefone" required>
-            </div>
-
-            <button class="btn" type="submit">Próximo</button>
-        </form>
+    
+        .input-group i {
+          position: absolute;
+          top: 50%;
+          left: 12px;
+          transform: translateY(-50%);
+          color: #888;
+        }
+    
+        .input-group input, .input-group select {
+          width: 100%;
+          padding: 12px 12px 12px 36px;
+          border: 1px solid #ccc;
+          border-radius: 10px;
+          font-size: 16px;
+          transition: all 0.3s ease;
+        }
+    
+        .input-group input:focus, .input-group select:focus {
+          border-color: #007BFF;
+          background-color: #f4faff;
+          outline: none;
+          box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        }
+    
+        button {
+          margin-top: 15px;
+          padding: 12px 25px;
+          border: none;
+          background-color: #007BFF;
+          color: white;
+          border-radius: 10px;
+          cursor: pointer;
+          font-size: 16px;
+          transition: background-color 0.3s ease;
+        }
+    
+        button:hover {
+          background-color: #0056b3;
+        }
+    
+      </style>
+    
+      <script>
+        window.onload = function () {
+          setTimeout(() => {
+            document.querySelector(".loading-screen").style.opacity = 0;
+            setTimeout(() => {
+              document.querySelector(".loading-screen").style.display = "none";
+              document.querySelector(".container").style.display = "flex";
+            }, 1000);
+          }, 3000);
+        };
+    
+        function irParaTela1() {
+          let nome = document.getElementById("nome").value;
+          let cpf = document.getElementById("cpf").value;
+          let pais = document.getElementById("pais").value;
+    
+          if (nome === "" || cpf === "" || pais === "") {
+            alert("Por favor, preencha todos os campos!");
+            return;
+          }
+    
+          document.querySelector(".container").style.display = "none";
+          document.querySelector(".tela1").style.display = "flex";
+        }
+    
+        function irParaTela2() {
+          let email = document.getElementById("email").value;
+          let telefone = document.getElementById("telefone").value;
+          let senha = document.getElementById("senha").value;
+          let confirmar = document.getElementById("confirmarSenha").value;
+    
+          if (email === "" || telefone === "" || senha === "" || confirmar === "") {
+            alert("Por favor, preencha todos os campos!");
+            return;
+          }
+    
+          if (senha !== confirmar) {
+            alert("As senhas não correspondem. Por favor, tente novamente!");
+            return;
+          }
+    
+          document.querySelector(".tela1").style.display = "none";
+          document.querySelector(".tela2").style.display = "flex";
+        }
+    
+        function logar() {
+          alert("Login realizado com sucesso!");
+        }
+    
+        function irParaLogin() {
+          document.querySelector(".container").style.display = "none";
+          document.querySelector(".tela2").style.display = "flex";
+        }
+      </script>
+    </head>
+    <body>
+    
+    <!-- INÍCIO DA TELA DE CARREGAMENTO -->
+    <div class="loading-screen">
+      <img src="https://i.postimg.cc/26VcMNnf/Bubble-SA-PNG.png" alt="Logo Bubble SA" class="umbrella-img">
+      <p>Aguarde. Estamos preparando tudo.</p>
     </div>
-
-</body>
-</html>
-'''
-
-# Página de cadastro
-@app.route('/')
-def cadastro():
-    return render_template_string(html)
-
-# Rota que recebe os dados
-@app.route('/cadastrar', methods=['POST'])
-def cadastrar():
-    nome = request.form.get('nome')
-    cpf = request.form.get('cpf')
-    telefone = request.form.get('telefone')
-
-    # Aqui você pode inserir no banco de dados
-    print(f'Nome: {nome}, CPF: {cpf}, Telefone: {telefone}')
-
-    return f'''
-    <h1>Cadastro recebido!</h1>
-    <p><b>Nome:</b> {nome}</p>
-    <p><b>CPF:</b> {cpf}</p>
-    <p><b>Telefone:</b> {telefone}</p>
-    <a href="/">Voltar</a>
-    '''
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    
+    <!-- INÍCIO DA PÁGINA A -->
+    <div class="container">
+      <h2>Bem-vindo!</h2>
+      <p>Preencha seus dados:</p>
+    
+      <div class="input-group">
+        <i class="fa fa-user"></i>
+        <input type="text" name="nome" id="nome" placeholder="Nome completo" required>
+      </div>
+    
+      <div class="input-group">
+        <i class="fa fa-id-card"></i>
+        <input type="text" name="cpf" id="cpf" placeholder="CPF" required>
+      </div>
+    
+      <div class="input-group">
+        <i class="fa fa-globe"></i>
+        <select name="pais" id="pais">
+          <option value="">Selecione seu país</option>
+          <option value="Brasil">Brasil</option>
+          <option value="Portugal">Portugal</option>
+          <option value="Estados Unidos">Estados Unidos</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+    
+      <button onclick="irParaTela1()">Próximo</button>
+      <button onclick="irParaLogin()">Já Possui cadastro? Login</button>
+    </div>
+    
+    <!-- INÍCIO DA TELA 1 -->
+    <div class="tela1">
+      <h2>Informações de cadastro</h2>
+    
+      <div class="input-group">
+        <i class="fa fa-envelope"></i>
+        <input type="email" name="email" id="email" placeholder="E-mail" required>
+      </div>
+    
+      <div class="input-group">
+        <i class="fa fa-phone"></i>
+        <input type="text" name="telefone" id="telefone" placeholder="Telefone" required>
+      </div>
+    
+      <div class="input-group">
+        <i class="fa fa-lock"></i>
+        <input type="password" name="senha" id="senha" placeholder="Criar senha" required>
+      </div>
+    
+      <div class="input-group">
+        <i class="fa fa-lock"></i>
+        <input type="password" name="confirmarSenha" id="confirmarSenha" placeholder="Confirmar senha" required>
+      </div>
+    
+      <button onclick="irParaTela2()">Finalizar Cadastro</button>
+    </div>
+    
+    <!-- INÍCIO DA TELA 2 (LOGIN) -->
+    <div class="tela2">
+      <h2>Login</h2>
+    
+      <div class="input-group">
+        <i class="fa fa-envelope"></i>
+        <input type="email" placeholder="E-mail">
+      </div>
+    
+      <div class="input-group">
+        <i class="fa fa-lock"></i>
+        <input type="password" placeholder="Senha">
+      </div>
+    
+      <button onclick="logar()">Entrar</button>
+    </div>
+    
+    </body>
+    </html>
