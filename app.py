@@ -21,7 +21,7 @@ html_template_step1 = '''
         body {
             margin: 0;
             font-family: 'Poppins', sans-serif;
-            background: url("fundo.gif") no-repeat center center fixed;
+            background: url("/static/fundo.png") no-repeat center center fixed;
             background-size: cover;
             display: flex;
             align-items: center;
@@ -88,7 +88,7 @@ html_template_step1 = '''
 </head>
 <body>
     <div class="container">
-        <img src="{{ url_for('logo.png') }}" alt="Logo">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
         <h2>Cadastro</h2>
         <form method="POST">
             <div class="input-field">
