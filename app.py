@@ -3,7 +3,7 @@ from flask import Flask, request, render_template_string, redirect, url_for, fla
 app = Flask(__name__)
 app.secret_key = 'sua_chave_secreta'  # Necessário para exibir mensagens flash
 
-# Código HTML mantido exatamente como você enviou
+# Código HTML com tooltips centralizados
 html_code = """
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -89,6 +89,7 @@ html_code = """
       left: 12px;
       transform: translateY(-50%);
       color: #888;
+      z-index: 2;
     }
     .input-group input, .input-group select {
       width: 100%;
@@ -104,6 +105,86 @@ html_code = """
       outline: none;
       box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
     }
+    .input-group input:invalid, .input-group select:invalid {
+      border-color: #dc3545;
+    }
+    
+    /* Tooltip centralizado */
+    .tooltip {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #333;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+      z-index: 1000;
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    
+    /* Seta do tooltip */
+    .tooltip::before {
+      content: '';
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: transparent transparent #333 transparent;
+    }
+    
+    /* Mostrar tooltip quando input está inválido ou vazio e focado */
+    .input-group input:focus:invalid + .tooltip,
+    .input-group select:focus:invalid + .tooltip,
+    .input-group input:focus:placeholder-shown + .tooltip {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    /* Tooltip para erro de confirmação de senha */
+    .password-error {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #dc3545;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+      z-index: 1000;
+      text-align: center;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    
+    .password-error::before {
+      content: '';
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: transparent transparent #dc3545 transparent;
+    }
+    
+    .password-error.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    
     button {
       margin-top: 15px;
       padding: 12px 25px;
@@ -139,7 +220,8 @@ html_code = """
       let cpf = document.getElementById("cpf").value;
       let pais = document.getElementById("pais").value;
       if (nome === "" || cpf === "" || pais === "") {
-        alert("Por favor, preencha todos os campos!");
+        // Mostrar tooltips para campos vazios
+        showEmptyFieldTooltips(['nome', 'cpf', 'pais']);
         return;
       }
       document.querySelector(".container").style.display = "none";
@@ -151,15 +233,39 @@ html_code = """
       let telefone = document.getElementById("telefone").value;
       let senha = document.getElementById("senha").value;
       let confirmar = document.getElementById("confirmarSenha").value;
+      
       if (email === "" || telefone === "" || senha === "" || confirmar === "") {
-        alert("Por favor, preencha todos os campos!");
+        showEmptyFieldTooltips(['email', 'telefone', 'senha', 'confirmarSenha']);
         return;
       }
       if (senha !== confirmar) {
-        alert("As senhas não correspondem. Por favor, tente novamente!");
+        showPasswordError();
         return;
       }
       document.getElementById("formCadastro").submit();
+    }
+    
+    function showEmptyFieldTooltips(fieldIds) {
+      fieldIds.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        const tooltip = field.parentNode.querySelector('.tooltip');
+        if (field.value === "" && tooltip) {
+          tooltip.style.opacity = '1';
+          tooltip.style.visibility = 'visible';
+          setTimeout(() => {
+            tooltip.style.opacity = '0';
+            tooltip.style.visibility = 'hidden';
+          }, 3000);
+        }
+      });
+    }
+    
+    function showPasswordError() {
+      const errorDiv = document.querySelector('.password-error');
+      errorDiv.classList.add('show');
+      setTimeout(() => {
+        errorDiv.classList.remove('show');
+      }, 3000);
     }
 
     function logar() {
@@ -170,6 +276,20 @@ html_code = """
       document.querySelector(".container").style.display = "none";
       document.querySelector(".tela2").style.display = "flex";
     }
+    
+    // Remover tooltips quando o usuário digitar
+    document.addEventListener('DOMContentLoaded', function() {
+      const inputs = document.querySelectorAll('input, select');
+      inputs.forEach(input => {
+        input.addEventListener('input', function() {
+          const tooltip = this.parentNode.querySelector('.tooltip');
+          if (tooltip && this.value !== '') {
+            tooltip.style.opacity = '0';
+            tooltip.style.visibility = 'hidden';
+          }
+        });
+      });
+    });
   </script>
 </head>
 <body>
@@ -193,11 +313,13 @@ html_code = """
   <div class="input-group">
     <i class="fa fa-user"></i>
     <input type="text" name="nome" id="nome" placeholder="Nome completo" required>
+    <div class="tooltip">Por favor, preencha seu nome completo</div>
   </div>
 
   <div class="input-group">
     <i class="fa fa-id-card"></i>
-    <input type="text" name="cpf" id="cpf" placeholder="CPF" required>
+    <input type="text" name="cpf" id="cpf" placeholder="CPF" required pattern="[0-9]{11}">
+    <div class="tooltip">Digite um CPF válido (11 dígitos)</div>
   </div>
 
   <div class="input-group">
@@ -209,6 +331,7 @@ html_code = """
       <option value="Estados Unidos">Estados Unidos</option>
       <option value="Outro">Outro</option>
     </select>
+    <div class="tooltip">Selecione seu país</div>
   </div>
 
   <button type="button" onclick="irParaTela1()">Próximo</button>
@@ -221,21 +344,26 @@ html_code = """
   <div class="input-group">
     <i class="fa fa-envelope"></i>
     <input type="email" name="email" id="email" placeholder="E-mail" required>
+    <div class="tooltip">Digite um e-mail válido</div>
   </div>
 
   <div class="input-group">
     <i class="fa fa-phone"></i>
     <input type="text" name="telefone" id="telefone" placeholder="Telefone" required>
+    <div class="tooltip">Digite seu telefone</div>
   </div>
 
   <div class="input-group">
     <i class="fa fa-lock"></i>
-    <input type="password" name="senha" id="senha" placeholder="Criar senha" required>
+    <input type="password" name="senha" id="senha" placeholder="Criar senha" required minlength="6">
+    <div class="tooltip">A senha deve ter pelo menos 6 caracteres</div>
   </div>
 
   <div class="input-group">
     <i class="fa fa-lock"></i>
     <input type="password" id="confirmarSenha" placeholder="Confirmar senha" required>
+    <div class="tooltip">Confirme sua senha</div>
+    <div class="password-error">As senhas não correspondem!</div>
   </div>
 
   <button type="button" onclick="irParaTela2()">Finalizar Cadastro</button>
@@ -246,12 +374,14 @@ html_code = """
 
   <div class="input-group">
     <i class="fa fa-envelope"></i>
-    <input type="email" placeholder="E-mail">
+    <input type="email" placeholder="E-mail" required>
+    <div class="tooltip">Digite seu e-mail</div>
   </div>
 
   <div class="input-group">
     <i class="fa fa-lock"></i>
-    <input type="password" placeholder="Senha">
+    <input type="password" placeholder="Senha" required>
+    <div class="tooltip">Digite sua senha</div>
   </div>
 
   <button onclick="logar()">Entrar</button>
