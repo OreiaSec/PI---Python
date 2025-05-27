@@ -28,7 +28,7 @@ html_code = """
       justify-content: center;
       height: 100vh;
     }
-    .loading-screen {
+    .loading-screen, .container, .tela1, .tela2 {
       position: fixed;
       top: 0;
       left: 0;
@@ -52,13 +52,6 @@ html_code = """
       border-radius: 20px;
       padding: 30px 20px;
       display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      height: auto;
-      max-height: 90vh;
-      overflow-y: auto;
     }
     .umbrella-img {
       width: auto;
