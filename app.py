@@ -117,7 +117,7 @@ html_code = """
     }
     button:hover { background-color: #0056b3; }
     .flash-message {
-      color: ##007BFF;
+      color: #007BFF;
       font-weight: bold;
       margin-bottom: 10px;
     }
