@@ -1,4 +1,4 @@
-Flask
-Flask-Cors
-mysql-connector-python
-gunicorn
+Flask==2.3.3
+mysql-connector-python==8.2.0
+Werkzeug==2.3.7
+gunicorn==21.2.0
