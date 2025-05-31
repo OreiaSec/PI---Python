@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bubble SA - Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
         :root {
             --sidebar-width-expanded: 250px;
@@ -137,31 +138,6 @@
             background-color: var(--primary-color); /* Destaque para o item ativo */
         }
         
-        /* Logout Link dentro da sidebar - REMOVIDO OU MANTIDO POR OPÇÃO*/
-        /* Se você quer manter o logout APENAS no dropdown, remova o .logout-link da sidebar */
-        /* .sidebar .logout-link {
-            width: 100%;
-            margin-top: auto;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255,255,255,0.2);
-        }
-        .sidebar .logout-link a {
-            background-color: var(--danger-color);
-            justify-content: center;
-            padding: 12px 20px;
-            margin: 0 15px;
-        }
-        .sidebar .logout-link a:hover {
-            background-color: #c82333;
-            transform: none;
-        }
-        .sidebar.expanded .logout-link a {
-             justify-content: flex-start;
-        }
-        .sidebar .logout-link a i {
-            margin-right: 10px;
-        } */
-
         /* Header (Topo) */
         .header {
             height: var(--header-height);
@@ -291,6 +267,7 @@
             transition: background-color 0.3s ease, transform 0.2s ease;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             text-decoration: none; /* Para ser usado como link/botão */
+            margin-top: 20px; /* Adicionado para espaçamento se você mantiver */
         }
 
         .main-content .action-button:hover {
@@ -326,6 +303,18 @@
         .flash-message i, .flash-error i {
             font-size: 1.2em;
         }
+
+        /* Estilo para o mapa */
+        #mapid {
+            height: 400px; /* Altura fixa para o mapa */
+            width: 100%; /* Largura total */
+            max-width: 800px; /* Largura máxima para o mapa */
+            border-radius: 15px; /* Bordas arredondadas */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); /* Sombra para destaque */
+            margin-top: 30px; /* Espaçamento superior */
+            background-color: #333; /* Cor de fundo enquanto o mapa carrega */
+        }
+
 
         /* Media Queries para Responsividade */
         @media (max-width: 768px) {
@@ -373,6 +362,9 @@
             .main-content p {
                 font-size: 1em;
             }
+            #mapid {
+                height: 300px; /* Ajusta a altura do mapa em mobile */
+            }
         }
     </style>
 </head>
@@ -389,7 +381,7 @@
             <li><a href="#"><i class="fas fa-cog"></i> <span class="link-text">Configurações</span></a></li>
             <li><a href="#"><i class="fas fa-question-circle"></i> <span class="link-text">Ajuda</span></a></li>
         </ul>
-        </aside>
+    </aside>
 
     <div class="header">
         <i class="fas fa-bars hamburger-menu" id="hamburgerMenu"></i>
@@ -421,11 +413,15 @@
             {% endif %}
         {% endwith %}
 
-        <h1>Bem-vindo, {{ user_name }}!</h1>
-        <p>Esta é a sua área exclusiva na Bubble SA. Aqui você pode gerenciar suas informações.</p>
-        <a href="#" class="action-button">Acessar Recursos</a>
+        <h1>Visão Geral do Mapa</h1>
+        <p>Acompanhe a localização de seus recursos em tempo real!</p>
+        
+        <div id="mapid"></div>
+
+        <a href="#" class="action-button">Gerenciar Locais</a>
     </main>
 
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
         const sidebar = document.getElementById('sidebar');
         const hamburgerMenu = document.getElementById('hamburgerMenu');
@@ -483,6 +479,18 @@
             } else {
                 sidebar.classList.remove('expanded'); // Start collapsed on mobile
             }
+
+            // Inicializa o mapa Leaflet APÓS o DOM estar carregado
+            var map = L.map('mapid').setView([-23.5505, -46.6333], 13); // Centrado em São Paulo, zoom 13
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Exemplo: Adicionar um marcador (opcional)
+            L.marker([-23.5505, -46.6333]).addTo(map)
+                .bindPopup('<b>Você está em São Paulo!</b><br>Bubble SA Central.')
+                .openPopup();
         });
     </script>
 </body>
