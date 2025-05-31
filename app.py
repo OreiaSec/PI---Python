@@ -380,10 +380,17 @@ html_code = """
       let nome = document.getElementById("nome").value;
       let cpf = document.getElementById("cpf").value;
       let pais = document.getElementById("pais").value;
+
       if (nome === "" || cpf === "" || pais === "") {
         showEmptyFieldTooltips(['nome', 'cpf', 'pais']);
         return;
       }
+
+      // NOVO: Transferir os valores para os campos ocultos do formulário da tela1
+      document.getElementById("hiddenNome").value = nome;
+      document.getElementById("hiddenCpf").value = cpf;
+      document.getElementById("hiddenPais").value = pais;
+
       document.querySelector(".container").style.display = "none";
       document.querySelector(".tela1").style.display = "flex";
     }
@@ -505,6 +512,10 @@ html_code = """
   <h2>Finalize seu cadastro</h2>
 
   <form id="formCadastro" method="POST" action="/cadastrar">
+    <input type="hidden" name="nome" id="hiddenNome">
+    <input type="hidden" name="cpf" id="hiddenCpf">
+    <input type="hidden" name="pais" id="hiddenPais">
+
     <div class="input-group">
       <i class="fa fa-envelope"></i>
       <input type="email" name="email" id="email" placeholder="E-mail" required>
@@ -585,10 +596,7 @@ def health_check():
 
 @app.route('/cadastrar', methods=['POST'])
 def cadastrar():
-    # O formCadastroParte1 não envia os dados diretamente, mas sim irParaTela1().
-    # Os dados de nome, cpf, pais virão do formulário da tela1, junto com email, telefone e senha.
-    # Por isso, coletamos todos os dados aqui.
-
+    # Agora, todos os campos virão do 'formCadastro' na tela1, incluindo os ocultos.
     nome = request.form.get('nome', '').strip()
     cpf = request.form.get('cpf', '').strip()
     pais = request.form.get('pais', '').strip()
@@ -599,6 +607,7 @@ def cadastrar():
     # Validações
     if not all([nome, cpf, pais, email, telefone, senha]):
         flash('Todos os campos são obrigatórios!', 'error')
+        # Debugging: print(f"Campos ausentes: nome={nome}, cpf={cpf}, pais={pais}, email={email}, telefone={telefone}, senha={senha}")
         return redirect(url_for('index'))
 
     if not validar_cpf(cpf):
@@ -632,39 +641,34 @@ def login():
         flash('Email e senha são obrigatórios!', 'error')
         return redirect(url_for('index'))
 
-    sucesso, user_name = verificar_login(email, senha) # user_name agora pode ser o nome se login for sucesso
+    sucesso, user_name = verificar_login(email, senha)
 
     if sucesso:
-        session['user_name'] = user_name # Armazena o nome do usuário na sessão
+        session['user_name'] = user_name
         flash(f'Bem-vindo de volta, {user_name}!', 'message')
-        return redirect(url_for('dashboard')) # Redireciona para a nova tela de dashboard
+        return redirect(url_for('dashboard'))
     else:
-        flash(user_name, 'error') # user_name conterá a mensagem de erro aqui
+        flash(user_name, 'error')
 
     return redirect(url_for('index'))
 
-# Nova rota para a tela do usuário logado (dashboard)
 @app.route('/dashboard')
 def dashboard():
     if 'user_name' in session:
-        # Renderiza o novo template user_dashboard.html, passando o nome do usuário
         return render_template('user_dashboard.html', user_name=session['user_name'])
     else:
         flash('Você precisa fazer login para acessar esta página.', 'error')
-        return redirect(url_for('index')) # Redireciona para a página de login se não estiver logado
+        return redirect(url_for('index'))
 
-# Nova rota para logout
 @app.route('/logout')
 def logout():
-    session.pop('user_name', None) # Remove o nome do usuário da sessão
+    session.pop('user_name', None)
     flash('Você foi desconectado.', 'message')
-    return redirect(url_for('index')) # Redireciona para a página inicial (cadastro/login)
+    return redirect(url_for('index'))
 
-# Inicialização do banco de dados (mesmo que antes)
 with app.app_context():
     init_database()
 
-# Para desenvolvimento local
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
