@@ -487,10 +487,29 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            // Exemplo: Adicionar um marcador (opcional)
-            L.marker([-23.5505, -46.6333]).addTo(map)
-                .bindPopup('<b>Você está em São Paulo!</b><br>Bubble SA Central.')
-                .openPopup();
+            // Define o ícone personalizado
+            var umbrellaIcon = L.icon({
+                iconUrl: 'https://i.imgur.com/your-umbrella-icon.png', // Substitua pelo URL da sua logo ou ícone de guarda-chuva
+                iconSize: [32, 32], // Tamanho do ícone
+                iconAnchor: [16, 32], // Ponto do ícone que corresponde à localização do marcador
+                popupAnchor: [0, -32] // Ponto relativo onde o popup deve abrir
+            });
+
+            // Adiciona marcadores para os pontos de retirada
+            L.marker([-23.5466, -46.6358], {icon: umbrellaIcon}).addTo(map) // Loja Do Dinho
+                .bindPopup('<b>Ponto de Retirada - Leão</b><br>Loja Do Dinho GUARDA-CHUVA ATACADO');
+
+            L.marker([-23.5413, -46.6353], {icon: umbrellaIcon}).addTo(map) // Lucky star Distribuidora
+                .bindPopup('<b>Ponto de Retirada - Tigre</b><br>Lucky star Distribuidora Guarda-chuva atacado');
+
+            L.marker([-23.5623, -46.6475], {icon: umbrellaIcon}).addTo(map) // Voyagem guarda chuvas
+                .bindPopup('<b>Ponto de Retirada - Lobo</b><br>Voyagem guarda chuvas');
+
+            L.marker([-23.5839, -46.6403], {icon: umbrellaIcon}).addTo(map) // Ao Para Água
+                 .bindPopup('<b>Ponto de Retirada - Urso</b><br>Ao Para Água Presentes e Consertos de Guarda-chuvas');
+
+           L.marker([-23.5042, -46.4950], {icon: umbrellaIcon}).addTo(map)  // JL Fabrica
+                .bindPopup('<b>Ponto de Retirada - Águia</b><br>JLV Fabrica de Guarda-Sóis e Ombrelones Personalizados');
         });
     </script>
 </body>
