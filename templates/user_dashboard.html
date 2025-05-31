@@ -6,94 +6,228 @@
     <title>Bubble SA - Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <style>
+        :root {
+            --sidebar-width-expanded: 250px;
+            --sidebar-width-collapsed: 80px; /* Largura da sidebar recolhida para ícones */
+            --header-height: 70px; /* Altura do novo cabeçalho */
+            --main-bg-image: url('https://static8.depositphotos.com/1020804/816/i/450/depositphotos_8166031-stock-photo-abstract-background-night-sky-after.jpg');
+            --sidebar-bg-color: rgba(11, 12, 42, 0.9);
+            --sidebar-text-color: white;
+            --sidebar-hover-bg: rgba(0, 123, 255, 0.3);
+            --primary-color: #007BFF;
+            --danger-color: #dc3545; /* Cor para logout */
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            background-image: url('https://static8.depositphotos.com/1020804/816/i/450/depositphotos_8166031-stock-photo-abstract-background-night-sky-after.jpg');
+            background-image: var(--main-bg-image);
             background-size: cover;
             background-position: center;
             background-repeat: repeat;
-            display: flex; /* Usamos flexbox para a barra lateral e o conteúdo */
+            display: flex;
             min-height: 100vh;
-            color: white; /* Cor do texto padrão */
+            color: var(--sidebar-text-color);
+            overflow-x: hidden; /* Evita scroll horizontal */
         }
 
-        /* Estilos da barra lateral */
+        /* Sidebar */
         .sidebar {
-            width: 250px;
-            background-color: rgba(11, 12, 42, 0.9); /* O mesmo background do loading/container */
-            padding: 20px;
+            width: var(--sidebar-width-collapsed); /* Começa recolhida */
+            background-color: var(--sidebar-bg-color);
+            padding: 20px 0; /* Padding vertical, horizontal 0 para controle via padding dos itens */
             display: flex;
             flex-direction: column;
-            align-items: flex-start; /* Alinha itens à esquerda */
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
-            z-index: 5; /* Garante que ela fique acima do background */
+            position: fixed; /* Fixa a sidebar */
+            height: 100%;
+            z-index: 1000;
+            transition: width 0.3s ease-in-out, left 0.3s ease-in-out; /* Transição para largura e posição */
+            overflow-y: auto; /* Para scroll se o conteúdo for grande */
+            align-items: flex-start; /* Alinha itens à esquerda */
+        }
+
+        .sidebar.expanded {
+            width: var(--sidebar-width-expanded); /* Expande ao clicar */
         }
 
         .sidebar .logo {
-            width: 150px; /* Tamanho da logo na sidebar */
+            width: 100%; /* Ocupa a largura disponível na sidebar */
+            padding: 0 15px; /* Padding interno para a logo */
             margin-bottom: 30px;
-            text-align: center;
+            text-align: center; /* Centraliza a imagem */
+            display: none; /* Esconde por padrão */
+            opacity: 0;
+            transition: opacity 0.1s ease;
+        }
+        .sidebar.expanded .logo {
+            display: block; /* Mostra a logo quando expandida */
+            opacity: 1;
         }
         .sidebar .logo img {
             width: 100%;
             height: auto;
+            max-width: 150px; /* Limite máximo para a logo */
         }
 
         .sidebar h3 {
-            color: #007BFF;
+            color: var(--primary-color);
             margin-bottom: 20px;
             border-bottom: 1px solid rgba(255,255,255,0.2);
             padding-bottom: 10px;
             width: 100%;
             text-align: center;
+            display: none; /* Esconde por padrão */
+            opacity: 0;
+            transition: opacity 0.1s ease;
+        }
+        .sidebar.expanded h3 {
+            display: block; /* Mostra o título quando expandida */
+            opacity: 1;
         }
 
         .sidebar ul {
             list-style: none;
             padding: 0;
             width: 100%;
+            flex-grow: 1; /* Ocupa o espaço disponível para a lista de navegação */
         }
 
         .sidebar ul li {
-            margin-bottom: 15px;
+            margin-bottom: 5px; /* Ajustado para um espaçamento menor */
         }
 
         .sidebar ul li a {
-            color: white;
+            color: var(--sidebar-text-color);
             text-decoration: none;
-            padding: 10px 15px;
-            display: block;
+            padding: 15px 20px; /* Mais padding para os links */
+            display: flex; /* Para alinhar ícone e texto */
+            align-items: center;
             border-radius: 8px;
             transition: background-color 0.3s ease, transform 0.2s ease;
-            display: flex;
-            align-items: center;
+            white-space: nowrap; /* Impede quebra de linha do texto */
+            overflow: hidden; /* Esconde o texto que ultrapassa a largura */
         }
 
         .sidebar ul li a i {
-            margin-right: 10px;
+            margin-right: 15px; /* Mais espaço entre ícone e texto */
             font-size: 1.2em;
+            width: 25px; /* Garante que o ícone tenha um espaço fixo */
+            text-align: center;
+        }
+        
+        .sidebar ul li a .link-text {
+            display: none; /* Esconde o texto por padrão */
+            opacity: 0;
+            transition: opacity 0.1s ease;
+        }
+
+        .sidebar.expanded ul li a .link-text {
+            display: inline; /* Mostra o texto quando expandido */
+            opacity: 1;
         }
 
         .sidebar ul li a:hover {
-            background-color: rgba(0, 123, 255, 0.3);
+            background-color: var(--sidebar-hover-bg);
             transform: translateX(5px);
         }
 
-        /* Estilos do conteúdo principal */
+        .sidebar ul li a.active {
+            background-color: var(--primary-color); /* Destaque para o item ativo */
+        }
+        
+        /* Logout Link dentro da sidebar */
+        .sidebar .logout-link {
+            width: 100%;
+            margin-top: auto; /* Empurra para o final da sidebar */
+            padding-top: 20px; /* Espaçamento antes do logout */
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        .sidebar .logout-link a {
+            background-color: var(--danger-color); /* Fundo vermelho para logout */
+            justify-content: center; /* Centraliza o texto e ícone no botão */
+            padding: 12px 20px;
+            margin: 0 15px; /* Margem interna para o botão de sair */
+        }
+        .sidebar .logout-link a:hover {
+            background-color: #c82333;
+            transform: none; /* Remove o translate da sidebar ao hover */
+        }
+        .sidebar.expanded .logout-link a {
+             justify-content: flex-start; /* Alinha à esquerda quando expandido */
+        }
+        .sidebar .logout-link a i {
+            margin-right: 10px; /* Ajusta margin para o ícone de logout */
+        }
+
+        /* Header (Topo) */
+        .header {
+            height: var(--header-height);
+            background-color: rgba(255, 255, 255, 0.9); /* Fundo semi-transparente para o header */
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            left: var(--sidebar-width-collapsed); /* Começa após a sidebar recolhida */
+            right: 0;
+            z-index: 999;
+            transition: left 0.3s ease-in-out;
+            color: #333; /* Cor do texto no header */
+        }
+
+        .sidebar.expanded ~ .header {
+            left: var(--sidebar-width-expanded); /* Move o header quando a sidebar expande */
+        }
+
+        .hamburger-menu {
+            font-size: 28px; /* Ícone um pouco maior */
+            cursor: pointer;
+            color: #333;
+            margin-right: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            flex-grow: 1; /* Ocupa o espaço restante */
+            color: #333;
+        }
+
+        .welcome-message {
+            font-size: 18px;
+            color: #555;
+            margin-left: auto; /* Empurra para a direita */
+            display: flex;
+            align-items: center;
+        }
+        .welcome-message i {
+            margin-right: 8px;
+            color: var(--primary-color);
+        }
+
+        /* Main Content Area */
         .main-content {
-            flex-grow: 1; /* Ocupa o restante do espaço horizontal */
-            padding: 30px;
-            background-color: rgba(255, 255, 255, 0.1); /* Um pouco transparente */
-            backdrop-filter: blur(8px); /* Efeito de blur leve */
-            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.3); /* Sombra interna */
+            margin-left: var(--sidebar-width-collapsed); /* Começa após a sidebar recolhida */
+            padding-top: var(--header-height); /* Espaçamento para o header fixo */
+            flex-grow: 1; /* Ocupa o restante da largura */
+            padding: calc(var(--header-height) + 30px) 30px 30px 30px; /* Ajusta o padding total */
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             text-align: center;
-            position: relative; /* Para o botão de logout */
+            transition: margin-left 0.3s ease-in-out;
+            color: white; /* Cor do texto no conteúdo principal */
+        }
+
+        .sidebar.expanded ~ .main-content {
+            margin-left: var(--sidebar-width-expanded); /* Move o conteúdo quando a sidebar expande */
         }
 
         .main-content h1 {
@@ -112,13 +246,14 @@
         .main-content .action-button {
             padding: 15px 30px;
             border: none;
-            background-color: #28a745; /* Verde para ação */
+            background-color: #28a745;
             color: white;
             border-radius: 10px;
             cursor: pointer;
             font-size: 1.1em;
             transition: background-color 0.3s ease, transform 0.2s ease;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            text-decoration: none; /* Para ser usado como link/botão */
         }
 
         .main-content .action-button:hover {
@@ -126,91 +261,187 @@
             transform: translateY(-3px);
         }
 
-        .logout-button {
-            position: absolute;
-            bottom: 30px;
-            right: 30px;
-            padding: 10px 20px;
-            background-color: #dc3545; /* Vermelho para logout */
-            color: white;
-            border: none;
+        /* Flash Messages */
+        .flash-messages-container {
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+        }
+        .flash-message, .flash-error {
+            padding: 10px 15px;
             border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: background-color 0.3s ease;
-            text-decoration: none; /* Para usar como link */
+            margin-bottom: 10px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .flash-message {
+            background-color: rgba(40, 167, 69, 0.1);
+            border: 1px solid #28a745;
+            color: #28a745;
+        }
+        .flash-error {
+            background-color: rgba(220, 53, 69, 0.1);
+            border: 1px solid #dc3545;
+            color: #dc3545;
+        }
+        .flash-message i, .flash-error i {
+            font-size: 1.2em;
         }
 
-        .logout-button:hover {
-            background-color: #c82333;
-        }
-
-        /* Responsividade básica */
+        /* Media Queries para Responsividade */
         @media (max-width: 768px) {
-            body {
-                flex-direction: column; /* Em telas menores, barra lateral fica em cima */
-            }
             .sidebar {
-                width: 100%;
-                height: auto;
-                flex-direction: row; /* Itens da sidebar em linha */
-                justify-content: space-around;
-                flex-wrap: wrap; /* Permite quebrar linha se muitos itens */
-                padding: 10px 0;
+                width: 0; /* Começa totalmente escondida em mobile */
+                left: -var(--sidebar-width-expanded); /* Fora da tela */
             }
-            .sidebar .logo {
-                display: none; /* Oculta a logo em telas menores */
+            .sidebar.expanded {
+                width: var(--sidebar-width-expanded);
+                left: 0; /* Desliza para dentro */
             }
-            .sidebar h3 {
-                display: none; /* Oculta o título em telas menores */
-            }
-            .sidebar ul {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
+            .header {
+                left: 0; /* Header sempre começa em 0 em mobile */
                 width: 100%;
             }
-            .sidebar ul li {
-                margin: 5px 10px; /* Espaçamento entre itens */
-            }
-            .sidebar ul li a {
-                padding: 8px 12px;
-                font-size: 0.9em;
-            }
-            .sidebar ul li a i {
-                margin-right: 5px;
+            .sidebar.expanded ~ .header {
+                left: var(--sidebar-width-expanded); /* Empurra o header ao expandir */
+                width: calc(100% - var(--sidebar-width-expanded));
             }
             .main-content {
-                padding: 20px;
+                margin-left: 0; /* Conteúdo sempre começa em 0 em mobile */
+                width: 100%;
+                padding: calc(var(--header-height) + 20px) 20px 20px 20px; /* Ajusta padding */
             }
-            .logout-button {
-                position: static; /* Volta para o fluxo normal */
-                margin-top: 20px;
-                width: 80%; /* Ocupa mais espaço */
+            .sidebar.expanded ~ .main-content {
+                margin-left: var(--sidebar-width-expanded); /* Empurra o conteúdo ao expandir */
+                width: calc(100% - var(--sidebar-width-expanded));
+            }
+            
+            /* Overlay quando sidebar expandida em mobile */
+            body.sidebar-open::after {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 990; /* Abaixo da sidebar, acima do conteúdo */
+            }
+
+            .main-content h1 {
+                font-size: 2em;
+            }
+            .main-content p {
+                font-size: 1em;
             }
         }
     </style>
 </head>
 <body>
 
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
         <div class="logo">
             <img src="https://i.postimg.cc/26VcMNnf/Bubble-SA-PNG.png" alt="Logo Bubble SA">
         </div>
         <h3>Menu</h3>
         <ul>
-            <li><a href="#"><i class="fas fa-umbrella"></i> Retirada de Guarda-Chuva</a></li>
-            <li><a href="#"><i class="fas fa-cogs"></i> Configurações</a></li>
-            <li><a href="#"><i class="fas fa-question-circle"></i> Ajuda</a></li>
-            </ul>
+            <li><a href="#" class="active"><i class="fas fa-home"></i> <span class="link-text">Dashboard</span></a></li>
+            <li><a href="#"><i class="fas fa-umbrella"></i> <span class="link-text">Retirada de Guarda-Chuva</span></a></li>
+            <li><a href="#"><i class="fas fa-bell"></i> <span class="link-text">Notificações</span></a></li>
+            <li><a href="#"><i class="fas fa-cog"></i> <span class="link-text">Configurações</span></a></li>
+            <li><a href="#"><i class="fas fa-question-circle"></i> <span class="link-text">Ajuda</span></a></li>
+        </ul>
+        <div class="logout-link">
+            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> <span class="link-text">Sair</span></a>
+        </div>
     </aside>
 
-    <main class="main-content">
+    <div class="header">
+        <i class="fas fa-bars hamburger-menu" id="hamburgerMenu"></i>
+        <h1>Dashboard</h1>
+        <span class="welcome-message"><i class="fas fa-user-circle"></i>Bem-vindo, {{ user_name }}!</span>
+    </div>
+
+    <main class="main-content" id="mainContent">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages-container">
+                    {% for category, message in messages %}
+                        <div class="flash-{{ category }}">
+                            {% if category == 'message' %}
+                                <i class="fas fa-check-circle"></i>
+                            {% else %}
+                                <i class="fas fa-exclamation-triangle"></i>
+                            {% endif %}
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
         <h1>Bem-vindo, {{ user_name }}!</h1>
         <p>Esta é a sua área exclusiva na Bubble SA. Aqui você pode gerenciar suas retiradas, ajustar configurações e obter ajuda.</p>
-        <button class="action-button">Acessar Guarda-Chuva</button>
-        <a href="{{ url_for('logout') }}" class="logout-button">Sair</a>
-    </main>
+        <a href="#" class="action-button">Acessar Guarda-Chuva</a> </main>
 
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const hamburgerMenu = document.getElementById('hamburgerMenu');
+        const mainContent = document.getElementById('mainContent');
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('expanded');
+            // Adiciona/remove uma classe no body para controlar o overlay em mobile
+            // e garantir que o scroll do body seja desabilitado quando a sidebar está aberta
+            document.body.classList.toggle('sidebar-open', sidebar.classList.contains('expanded') && window.innerWidth <= 768);
+            document.body.style.overflow = sidebar.classList.contains('expanded') && window.innerWidth <= 768 ? 'hidden' : '';
+        }
+
+        hamburgerMenu.addEventListener('click', toggleSidebar);
+
+        // Fechar sidebar ao clicar fora (somente em telas pequenas)
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768 && sidebar.classList.contains('expanded')) {
+                const isClickInsideSidebar = sidebar.contains(event.target);
+                const isClickOnHamburger = hamburgerMenu.contains(event.target);
+
+                if (!isClickInsideSidebar && !isClickOnHamburger) {
+                    toggleSidebar(); // Fecha a sidebar
+                }
+            }
+        });
+
+        // Garantir que a sidebar comece no estado correto ao redimensionar
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                // Em desktop, garante que a sidebar esteja visível e expandida por padrão, se quiser
+                // ou que o estado 'expanded' seja mantido se já estava
+                if (!sidebar.classList.contains('expanded')) {
+                    sidebar.classList.add('expanded'); // Exemplo: sempre expandida em desktop
+                }
+                document.body.classList.remove('sidebar-open'); // Remove overlay
+                document.body.style.overflow = ''; // Habilita scroll
+            } else {
+                // Em mobile, garante que comece recolhida
+                if (sidebar.classList.contains('expanded')) {
+                    sidebar.classList.remove('expanded');
+                }
+                document.body.classList.remove('sidebar-open');
+                document.body.style.overflow = '';
+            }
+        });
+
+        // Inicializa o estado da sidebar ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth > 768) {
+                sidebar.classList.add('expanded'); // Começa expandida em desktop
+            } else {
+                sidebar.classList.remove('expanded'); // Começa recolhida em mobile
+            }
+        });
+
+    </script>
 </body>
 </html>
