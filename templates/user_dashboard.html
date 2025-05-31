@@ -137,29 +137,30 @@
             background-color: var(--primary-color); /* Destaque para o item ativo */
         }
         
-        /* Logout Link dentro da sidebar */
-        .sidebar .logout-link {
+        /* Logout Link dentro da sidebar - REMOVIDO OU MANTIDO POR OPÇÃO*/
+        /* Se você quer manter o logout APENAS no dropdown, remova o .logout-link da sidebar */
+        /* .sidebar .logout-link {
             width: 100%;
-            margin-top: auto; /* Empurra para o final da sidebar */
-            padding-top: 20px; /* Espaçamento antes do logout */
+            margin-top: auto;
+            padding-top: 20px;
             border-top: 1px solid rgba(255,255,255,0.2);
         }
         .sidebar .logout-link a {
-            background-color: var(--danger-color); /* Fundo vermelho para logout */
-            justify-content: center; /* Centraliza o texto e ícone no botão */
+            background-color: var(--danger-color);
+            justify-content: center;
             padding: 12px 20px;
-            margin: 0 15px; /* Margem interna para o botão de sair */
+            margin: 0 15px;
         }
         .sidebar .logout-link a:hover {
             background-color: #c82333;
-            transform: none; /* Remove o translate da sidebar ao hover */
+            transform: none;
         }
         .sidebar.expanded .logout-link a {
-             justify-content: flex-start; /* Alinha à esquerda quando expandido */
+             justify-content: flex-start;
         }
         .sidebar .logout-link a i {
-            margin-right: 10px; /* Ajusta margin para o ícone de logout */
-        }
+            margin-right: 10px;
+        } */
 
         /* Header (Topo) */
         .header {
@@ -197,16 +198,52 @@
             color: #333;
         }
 
-        .welcome-message {
-            font-size: 18px;
-            color: #555;
+        /* User Dropdown Styles */
+        .user-dropdown {
+            position: relative;
             margin-left: auto; /* Empurra para a direita */
+            cursor: pointer;
             display: flex;
             align-items: center;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: background-color 0.2s ease;
         }
-        .welcome-message i {
+        .user-dropdown:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        .user-dropdown i {
             margin-right: 8px;
             color: var(--primary-color);
+        }
+        .user-dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            right: 0;
+            top: 100%; /* Abaixo do botão */
+            border-radius: 8px;
+            overflow: hidden; /* Garante que os cantos arredondados funcionem */
+        }
+        .user-dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            transition: background-color 0.2s ease;
+        }
+        .user-dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .user-dropdown-content a i {
+            margin-right: 10px;
+            color: #555;
+        }
+        .user-dropdown.show .user-dropdown-content {
+            display: block;
         }
 
         /* Main Content Area */
@@ -348,20 +385,22 @@
         <h3>Menu</h3>
         <ul>
             <li><a href="#" class="active"><i class="fas fa-home"></i> <span class="link-text">Dashboard</span></a></li>
-            <li><a href="#"><i class="fas fa-umbrella"></i> <span class="link-text">Retirada de Guarda-Chuva</span></a></li>
             <li><a href="#"><i class="fas fa-bell"></i> <span class="link-text">Notificações</span></a></li>
             <li><a href="#"><i class="fas fa-cog"></i> <span class="link-text">Configurações</span></a></li>
             <li><a href="#"><i class="fas fa-question-circle"></i> <span class="link-text">Ajuda</span></a></li>
         </ul>
-        <div class="logout-link">
-            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> <span class="link-text">Sair</span></a>
-        </div>
-    </aside>
+        </aside>
 
     <div class="header">
         <i class="fas fa-bars hamburger-menu" id="hamburgerMenu"></i>
         <h1>Dashboard</h1>
-        <span class="welcome-message"><i class="fas fa-user-circle"></i>Bem-vindo, {{ user_name }}!</span>
+        
+        <div class="user-dropdown" id="userDropdown">
+            <i class="fas fa-user-circle"></i>Bem-vindo, {{ user_name }}!
+            <div class="user-dropdown-content">
+                <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Sair</a>
+            </div>
+        </div>
     </div>
 
     <main class="main-content" id="mainContent">
@@ -383,65 +422,68 @@
         {% endwith %}
 
         <h1>Bem-vindo, {{ user_name }}!</h1>
-        <p>Esta é a sua área exclusiva na Bubble SA. Aqui você pode gerenciar suas retiradas, ajustar configurações e obter ajuda.</p>
-        <a href="#" class="action-button">Acessar Guarda-Chuva</a> </main>
+        <p>Esta é a sua área exclusiva na Bubble SA. Aqui você pode gerenciar suas informações.</p>
+        <a href="#" class="action-button">Acessar Recursos</a>
+    </main>
 
     <script>
         const sidebar = document.getElementById('sidebar');
         const hamburgerMenu = document.getElementById('hamburgerMenu');
         const mainContent = document.getElementById('mainContent');
+        const userDropdown = document.getElementById('userDropdown');
 
         function toggleSidebar() {
             sidebar.classList.toggle('expanded');
-            // Adiciona/remove uma classe no body para controlar o overlay em mobile
-            // e garantir que o scroll do body seja desabilitado quando a sidebar está aberta
             document.body.classList.toggle('sidebar-open', sidebar.classList.contains('expanded') && window.innerWidth <= 768);
             document.body.style.overflow = sidebar.classList.contains('expanded') && window.innerWidth <= 768 ? 'hidden' : '';
         }
 
-        hamburgerMenu.addEventListener('click', toggleSidebar);
+        function toggleUserDropdown() {
+            userDropdown.classList.toggle('show');
+        }
 
-        // Fechar sidebar ao clicar fora (somente em telas pequenas)
+        hamburgerMenu.addEventListener('click', toggleSidebar);
+        userDropdown.addEventListener('click', toggleUserDropdown);
+
+        // Close dropdown if clicked outside
         document.addEventListener('click', function(event) {
+            if (!userDropdown.contains(event.target)) {
+                userDropdown.classList.remove('show');
+            }
+            // Logic for sidebar closing on outside click (already there)
             if (window.innerWidth <= 768 && sidebar.classList.contains('expanded')) {
                 const isClickInsideSidebar = sidebar.contains(event.target);
                 const isClickOnHamburger = hamburgerMenu.contains(event.target);
 
                 if (!isClickInsideSidebar && !isClickOnHamburger) {
-                    toggleSidebar(); // Fecha a sidebar
+                    toggleSidebar();
                 }
             }
         });
 
-        // Garantir que a sidebar comece no estado correto ao redimensionar
+        // Initialize sidebar state on load and resize
         window.addEventListener('resize', function() {
             if (window.innerWidth > 768) {
-                // Em desktop, garante que a sidebar esteja visível e expandida por padrão, se quiser
-                // ou que o estado 'expanded' seja mantido se já estava
-                if (!sidebar.classList.contains('expanded')) {
-                    sidebar.classList.add('expanded'); // Exemplo: sempre expandida em desktop
-                }
-                document.body.classList.remove('sidebar-open'); // Remove overlay
-                document.body.style.overflow = ''; // Habilita scroll
+                sidebar.classList.add('expanded'); // Always expanded on desktop
+                document.body.classList.remove('sidebar-open');
+                document.body.style.overflow = '';
             } else {
-                // Em mobile, garante que comece recolhida
-                if (sidebar.classList.contains('expanded')) {
-                    sidebar.classList.remove('expanded');
-                }
+                sidebar.classList.remove('expanded'); // Always collapsed on mobile
                 document.body.classList.remove('sidebar-open');
                 document.body.style.overflow = '';
             }
+            // Close dropdown on resize if it was open
+            userDropdown.classList.remove('show');
         });
 
-        // Inicializa o estado da sidebar ao carregar a página
+        // Initial state when page loads
         document.addEventListener('DOMContentLoaded', function() {
             if (window.innerWidth > 768) {
-                sidebar.classList.add('expanded'); // Começa expandida em desktop
+                sidebar.classList.add('expanded'); // Start expanded on desktop
             } else {
-                sidebar.classList.remove('expanded'); // Começa recolhida em mobile
+                sidebar.classList.remove('expanded'); // Start collapsed on mobile
             }
         });
-
     </script>
 </body>
 </html>
