@@ -10,11 +10,11 @@ app.secret_key = os.environ.get('SECRET_KEY', 'sua_chave_secreta_super_segura_aq
 
 # Configurações do banco de dados MySQL - usando variáveis de ambiente para segurança
 DB_CONFIG = {
-    'host': os.environ.get('DB_HOST', 'localhost'),
+    'host': '192.168.0.170', # <--- SUBSTITUA PELO IP REAL DA SUA MÁQUINA ONDE O MYSQL ESTÁ RODANDO
     'port': int(os.environ.get('DB_PORT', 3306)),
-    'database': os.environ.get('DB_NAME', 'newschema'),  # Baseado na sua imagem
-    'user': os.environ.get('DB_USER', 'root'),
-    'password': os.environ.get('DB_PASSWORD', ''),
+    'database': os.environ.get('DB_NAME', 'bubble_database'),
+    'user': os.environ.get('DB_USER', 'root'), # Use 'bubble_user' se você criou um novo usuário
+    'password': os.environ.get('DB_PASSWORD', 'bubble@2025'),
     'charset': 'utf8mb4',
     'collation': 'utf8mb4_unicode_ci',
     'autocommit': True,
