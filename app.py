@@ -170,7 +170,7 @@ html_code = """
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
       padding: 0;
-      background-image: url('https://i.gifer.com/se0.gif');
+      background-image: url('https://static8.depositphotos.com/1020804/816/i/450/depositphotos_8166031-stock-photo-abstract-background-night-sky-after.jpg');
       background-size: cover;
       background-position: center;
       background-repeat: repeat;
