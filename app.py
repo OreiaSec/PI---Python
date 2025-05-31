@@ -1,10 +1,11 @@
 import os
-from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template
+from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template, jsonify
 import mysql.connector
 from mysql.connector import Error
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
-from datetime import datetime # Importar datetime para data e hora
+from datetime import datetime
+import functools # ADICIONADO: Importar functools para o decorador
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'sua_chave_secreta_super_segura_aqui')
@@ -67,21 +68,20 @@ def init_database():
             cursor.execute(create_users_table_query)
             print("Tabela 'users_from_bb' criada ou já existe.")
 
-            # SQL para criar a tabela umbrella_retirada (adicionei aqui para garantir que seja criada se não estiver)
+            # SQL para criar a tabela umbrella_retirada (ATUALIZADO COM user_id, ativo, data_devolucao)
             create_umbrella_table_query = """
             CREATE TABLE IF NOT EXISTS umbrella_retirada (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                nome_usuario VARCHAR(255) NOT NULL,
-                email VARCHAR(255) NOT NULL,
-                telefone VARCHAR(50) NOT NULL,
+                user_id INT NOT NULL, -- Chave estrangeira para users_from_bb
                 codigo_guarda_chuva VARCHAR(6) NOT NULL,
-                data_retirada DATE NOT NULL,
-                hora_retirada TIME NOT NULL,
-                timestamp_retirada DATETIME DEFAULT CURRENT_TIMESTAMP
+                data_retirada DATETIME DEFAULT CURRENT_TIMESTAMP, -- Alterado para DATETIME
+                data_devolucao DATETIME NULL, -- Nova coluna
+                ativo BOOLEAN DEFAULT TRUE, -- Nova coluna
+                FOREIGN KEY (user_id) REFERENCES users_from_bb(id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
             cursor.execute(create_umbrella_table_query)
-            print("Tabela 'umbrella_retirada' criada ou já existe.")
+            print("Tabela 'umbrella_retirada' criada ou já existe (com estrutura atualizada).")
 
             connection.commit()
 
@@ -173,7 +173,17 @@ def verificar_login(email, senha):
             cursor.close()
             connection.close()
 
-# Código HTML com as correções aplicadas
+# Decorador para verificar se o usuário está logado (REMOVIDO o Flash-MySQLdb. Adicionado aqui)
+def login_required(f):
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Você precisa estar logado para acessar esta página.', 'error')
+            return redirect(url_for('index')) # Redireciona para a página inicial/login
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Código HTML com as correções aplicadas (sem alterações aqui, já está no formato de string)
 html_code = """
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -616,7 +626,6 @@ def health_check():
 
 @app.route('/cadastrar', methods=['POST'])
 def cadastrar():
-    # Agora, todos os campos virão do 'formCadastro' na tela1, incluindo os ocultos.
     nome = request.form.get('nome', '').strip()
     cpf = request.form.get('cpf', '').strip()
     pais = request.form.get('pais', '').strip()
@@ -627,7 +636,6 @@ def cadastrar():
     # Validações
     if not all([nome, cpf, pais, email, telefone, senha]):
         flash('Todos os campos são obrigatórios!', 'error')
-        # Debugging: print(f"Campos ausentes: nome={nome}, cpf={cpf}, pais={pais}, email={email}, telefone={telefone}, senha={senha}")
         return redirect(url_for('index'))
 
     if not validar_cpf(cpf):
@@ -661,7 +669,6 @@ def login():
         flash('Email e senha são obrigatórios!', 'error')
         return redirect(url_for('index'))
 
-    # Alterado para receber mais dados do verificar_login
     sucesso, user_name, user_email, user_phone, user_id = verificar_login(email, senha)
 
     if sucesso:
@@ -677,13 +684,11 @@ def login():
     return redirect(url_for('index'))
 
 @app.route('/dashboard')
+@login_required # Aplicando o decorador de login
 def dashboard():
-    if 'user_name' in session:
-        # A template 'user_dashboard.html' precisa estar na pasta 'templates'
-        return render_template('user_dashboard.html', user_name=session['user_name'])
-    else:
-        flash('Você precisa fazer login para acessar esta página.', 'error')
-        return redirect(url_for('index'))
+    user_name = session.get('user_name', 'Usuário')
+    # A template 'user_dashboard.html' precisa estar na pasta 'templates'
+    return render_template('user_dashboard.html', user_name=user_name)
 
 @app.route('/logout')
 def logout():
@@ -694,69 +699,118 @@ def logout():
     flash('Você foi desconectado.', 'message')
     return redirect(url_for('index'))
 
-# --- NOVA ROTA PARA REGISTRAR RETIRADA DE GUARDA-CHUVA ---
-@app.route('/registrar_retirada', methods=['POST'])
-def registrar_retirada():
-    # Verifica se o usuário está logado
-    if 'user_id' not in session:
-        return {'status': 'error', 'message': 'Não autenticado. Faça login para registrar a retirada.'}, 401
-    
-    # Pega o código do guarda-chuva enviado pelo JavaScript
-    data = request.get_json()
-    codigo_guarda_chuva = data.get('codigo')
+# --- NOVA LÓGICA PARA GUARDA-CHUVA ---
 
-    if not codigo_guarda_chuva:
-        return {'status': 'error', 'message': 'Código do guarda-chuva não fornecido.'}, 400
-
-    # Pega os dados do usuário da sessão (garantindo que foram salvos no login)
-    nome_usuario = session.get('user_name') # Seu campo 'nome' no banco
-    email = session.get('email')
-    telefone = session.get('phone')
-
-    # Validação dos dados da sessão (devem existir)
-    if not all([nome_usuario, email, telefone]):
-        # Isso indica um problema na forma como os dados da sessão são populados no login.
-        # O usuário pode ter logado, mas as informações essenciais não estão na sessão.
-        return {'status': 'error', 'message': 'Dados do usuário (nome, email, telefone) não encontrados na sessão. Por favor, faça login novamente.'}, 400
-
-    # Obtém data e hora atuais
-    data_retirada = datetime.now().strftime('%Y-%m-%d')
-    hora_retirada = datetime.now().strftime('%H:%M:%S')
-
+# Rota para verificar o status do guarda-chuva do usuário
+@app.route('/status_guarda_chuva', methods=['GET'])
+@login_required
+def status_guarda_chuva():
+    user_id = session['user_id']
     connection = None
     try:
         connection = get_db_connection()
         if not connection:
-            return {'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}, 500
+            return jsonify({'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}), 500
         
         cursor = connection.cursor()
         
-        insert_query = """
-        INSERT INTO umbrella_retirada (nome_usuario, email, telefone, codigo_guarda_chuva, data_retirada, hora_retirada)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        """
-        values = (nome_usuario, email, telefone, codigo_guarda_chuva, data_retirada, hora_retirada)
+        # Verifica se o usuário tem um guarda-chuva "ativo" (não devolvido)
+        cursor.execute("SELECT COUNT(*) FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE", (user_id,))
+        has_umbrella = cursor.fetchone()[0] > 0
         
-        cursor.execute(insert_query, values)
-        connection.commit() # Commit a transação
-
-        print(f"Retirada registrada: Usuário '{nome_usuario}', Código: '{codigo_guarda_chuva}'")
-        return {'status': 'success', 'message': 'Retirada registrada com sucesso!'}
+        return jsonify({'status': 'success', 'has_umbrella': has_umbrella})
 
     except Error as e:
-        print(f"Erro ao inserir retirada no MySQL: {e}")
-        # Rollback em caso de erro para garantir a integridade
-        if connection:
-            connection.rollback()
-        return {'status': 'error', 'message': f'Erro no servidor ao registrar retirada: {str(e)}'}, 500
+        print(f"Erro ao obter status do guarda-chuva: {e}")
+        return jsonify({'status': 'error', 'message': f'Erro interno do servidor: {str(e)}'}), 500
     finally:
         if connection and connection.is_connected():
             cursor.close()
             connection.close()
 
+# Rota para registrar a retirada do guarda-chuva
+@app.route('/registrar_retirada', methods=['POST'])
+@login_required
+def registrar_retirada():
+    user_id = session['user_id']
+    connection = None
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}), 500
+        
+        cursor = connection.cursor()
+        # Primeiro, verifica se o usuário já tem um guarda-chuva ativo
+        cursor.execute("SELECT COUNT(*) FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE", (user_id,))
+        if cursor.fetchone()[0] > 0:
+            return jsonify({'status': 'error', 'message': 'Você já possui um guarda-chuva retirado.'}), 400
 
+        data = request.get_json()
+        codigo_guarda_chuva = data.get('codigo')
+
+        if not codigo_guarda_chuva:
+            return jsonify({'status': 'error', 'message': 'Código de retirada não fornecido.'}), 400
+
+        # Inserir o registro na tabela umbrella_retirada
+        # 'ativo' é TRUE por padrão (ou definido explicitamente aqui)
+        cursor.execute("INSERT INTO umbrella_retirada (user_id, codigo_guarda_chuva, ativo) VALUES (%s, %s, TRUE)",
+                        (user_id, codigo_guarda_chuva))
+        connection.commit()
+
+        print(f"Retirada registrada para user_id={user_id}, Código: '{codigo_guarda_chuva}'")
+        return jsonify({'status': 'success', 'message': 'Por favor, retire seu guarda-chuva.'})
+
+    except Error as e:
+        connection.rollback() # Em caso de erro, desfaz a operação
+        print(f"Erro ao registrar retirada: {e}")
+        return jsonify({'status': 'error', 'message': f'Erro interno do servidor: {str(e)}'}), 500
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+# Rota para registrar a devolução do guarda-chuva
+@app.route('/registrar_devolucao', methods=['POST'])
+@login_required
+def registrar_devolucao():
+    user_id = session['user_id']
+    connection = None
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}), 500
+
+        cursor = connection.cursor(dictionary=True) # Usar dictionary=True para acessar o 'id'
+
+        # Verifica se o usuário tem um guarda-chuva ativo para devolver
+        cursor.execute("SELECT id FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE ORDER BY data_retirada DESC LIMIT 1", (user_id,))
+        retirada_ativa = cursor.fetchone()
+
+        if not retirada_ativa:
+            return jsonify({'status': 'error', 'message': 'Você não possui um guarda-chuva para devolver.'}), 400
+
+        retirada_id = retirada_ativa['id'] # Pega o ID da retirada ativa
+        
+        # Atualiza o registro da retirada ativa, definindo data_devolucao e ativo como FALSE
+        cursor.execute("UPDATE umbrella_retirada SET data_devolucao = %s, ativo = FALSE WHERE id = %s",
+                        (datetime.now(), retirada_id))
+        connection.commit()
+
+        print(f"Devolução registrada para user_id={user_id}, Retirada ID: {retirada_id}")
+        return jsonify({'status': 'success', 'message': 'Guarda-chuva devolvido com sucesso!'})
+
+    except Error as e:
+        connection.rollback()
+        print(f"Erro ao registrar devolução: {e}")
+        return jsonify({'status': 'error', 'message': f'Erro interno do servidor: {str(e)}'}), 500
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+# Certifique-se de que a inicialização do banco de dados ocorra no contexto da aplicação
 with app.app_context():
-    init_database() # Garante que as tabelas são criadas ao iniciar a aplicação
+    init_database()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
