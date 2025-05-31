@@ -349,6 +349,7 @@
             width: 400px;
             transform: scale(0.9); /* Começa um pouco menor */
             transition: transform 0.3s ease-in-out;
+            position: relative; /* Para posicionar o botão de fechar */
         }
 
         .umbrella-overlay.active .umbrella-overlay-content {
@@ -378,22 +379,20 @@
             margin-bottom: 20px;
         }
 
-        .umbrella-overlay-content .input-group label {
-            display: block;
-            margin-bottom: 8px;
+        /* Estiliza o código gerado como um display */
+        .generated-code {
+            font-size: 2.2em; /* Tamanho maior para o código */
             font-weight: bold;
-            color: #555;
+            color: var(--primary-color); /* Cor destacada */
+            background-color: #e0e0e0;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            letter-spacing: 3px; /* Espaçamento entre caracteres */
+            display: inline-block; /* Para o padding funcionar */
+            min-width: 150px; /* Garante que a caixa tenha um tamanho mínimo */
         }
 
-        .umbrella-overlay-content .input-group input[type="text"] {
-            width: calc(100% - 20px); /* Ajusta para padding */
-            padding: 12px 10px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 1.1em;
-            text-align: center; /* Centraliza o texto do código */
-            letter-spacing: 2px; /* Espaçamento entre caracteres */
-        }
 
         .umbrella-overlay-content .btn-close {
             background: none;
@@ -468,6 +467,9 @@
             .umbrella-overlay-content h2 {
                 font-size: 1.5em;
             }
+            .generated-code {
+                font-size: 1.8em;
+            }
         }
     </style>
 </head>
@@ -517,36 +519,32 @@
         {% endwith %}
 
         <h1>Visão Geral do Mapa</h1>
-        <p>Acompanhe a localização dos nossos postos de retirada em tempo real!</p>
+        <p>Acompanhe a localização de seus recursos em tempo real!</p>
         
         <div id="mapid"></div>
 
-        <button id="umbrellaActionButton" class="action-button">Retirar um guarda-chuva</button>
+        <button id="umbrellaActionButton" class="action-button">Eu quero um guarda-chuva / Retirar um guarda-chuva</button>
     </main>
 
     <div id="umbrellaOverlay" class="umbrella-overlay">
         <div class="umbrella-overlay-content">
             <button class="btn-close" id="closeUmbrellaOverlay">&times;</button>
-            <i class="fas fa-umbrella"></i> <h2>Retirar Guarda-Chuva</h2>
-            <div class="input-group">
-                <label for="retrievalCode">Digite o Código de Retirada:</label>
-                <input type="text" id="retrievalCode" placeholder="Ex: ABC123DEF" maxlength="10">
-            </div>
-            <button class="action-button">Confirmar Retirada</button>
-        </div>
+            <i class="fas fa-umbrella"></i> <h2>Seu Código de Retirada</h2>
+            <div class="generated-code" id="retrievalCodeDisplay"></div> <button class="action-button" id="confirmOkButton">OK</button> </div>
     </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
         const sidebar = document.getElementById('sidebar');
         const hamburgerMenu = document.getElementById('hamburgerMenu');
-        const mainContent = document.getElementById('mainContent');
         const userDropdown = document.getElementById('userDropdown');
         
         // Novos elementos para o overlay
         const umbrellaActionButton = document.getElementById('umbrellaActionButton');
         const umbrellaOverlay = document.getElementById('umbrellaOverlay');
         const closeUmbrellaOverlay = document.getElementById('closeUmbrellaOverlay');
+        const retrievalCodeDisplay = document.getElementById('retrievalCodeDisplay'); // Elemento para exibir o código
+        const confirmOkButton = document.getElementById('confirmOkButton'); // Novo botão OK
 
         function toggleSidebar() {
             sidebar.classList.toggle('expanded');
@@ -558,16 +556,38 @@
             userDropdown.classList.toggle('show');
         }
 
+        // Função para gerar um código aleatório de 6 caracteres (letras e números maiúsculos)
+        function generateRandomCode(length) {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            const charactersLength = characters.length;
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            }
+            return result;
+        }
+
         hamburgerMenu.addEventListener('click', toggleSidebar);
         userDropdown.addEventListener('click', toggleUserDropdown);
 
         // Funções para o overlay do guarda-chuva
         umbrellaActionButton.addEventListener('click', () => {
+            // Gera e exibe o código antes de mostrar o overlay
+            retrievalCodeDisplay.textContent = generateRandomCode(6);
             umbrellaOverlay.classList.add('active');
         });
 
         closeUmbrellaOverlay.addEventListener('click', () => {
             umbrellaOverlay.classList.remove('active');
+        });
+
+        // Fechar overlay clicando no botão "OK"
+        confirmOkButton.addEventListener('click', () => {
+            umbrellaOverlay.classList.remove('active');
+            // Aqui você pode adicionar lógica para realmente confirmar a retirada
+            // Por exemplo, enviar o código gerado para um servidor, etc.
+            console.log('Código de retirada confirmado:', retrievalCodeDisplay.textContent);
+            alert('Guarda-chuva retirado com sucesso! Código: ' + retrievalCodeDisplay.textContent);
         });
 
         // Fechar overlay clicando fora do conteúdo (mas não no botão que o abre)
