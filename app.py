@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template # Adicionado 'session', 'render_template'
+from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template
 import mysql.connector
 from mysql.connector import Error
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -39,7 +39,6 @@ def get_db_connection():
             if retry_count >= max_retries:
                 print("Máximo de tentativas de conexão excedido")
                 return None
-
     return None
 
 def init_database():
@@ -154,7 +153,7 @@ def verificar_login(email, senha):
             cursor.close()
             connection.close()
 
-# Código HTML (mesmo da versão anterior, sem alterações neste bloco)
+# Código HTML com as correções aplicadas
 html_code = """
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -213,8 +212,8 @@ html_code = """
       margin-bottom: 10px;
       opacity: 0;
       animation: fadeIn 1.5s ease forwards,
-                   float 3s ease-in-out infinite,
-                   pulse 1s ease-in-out infinite;
+                 float 3s ease-in-out infinite,
+                 pulse 1s ease-in-out infinite;
     }
     @keyframes fadeIn {
       from { opacity: 0; transform: scale(0.5); }
@@ -403,6 +402,7 @@ html_code = """
         showPasswordError();
         return;
       }
+      // O formulário correto a ser submetido é o da tela1, que tem id="formCadastro"
       document.getElementById("formCadastro").submit();
     }
 
@@ -455,8 +455,6 @@ html_code = """
 </head>
 <body>
 
-<form id="formCadastro" method="POST" action="/cadastrar">
-
 <div class="loading-screen">
   <img src="https://i.postimg.cc/26VcMNnf/Bubble-SA-PNG.png" alt="Logo Bubble SA" class="umbrella-img">
   <p>Conectando ao Render...</p>
@@ -473,64 +471,67 @@ html_code = """
     {% endif %}
   {% endwith %}
 
-  <div class="input-group">
-    <i class="fa fa-user"></i>
-    <input type="text" name="nome" id="nome" placeholder="Nome completo" required>
-    <div class="tooltip">Por favor, preencha seu nome completo</div>
-  </div>
+  <form id="formCadastroParte1">
+    <div class="input-group">
+      <i class="fa fa-user"></i>
+      <input type="text" name="nome" id="nome" placeholder="Nome completo" required>
+      <div class="tooltip">Por favor, preencha seu nome completo</div>
+    </div>
 
-  <div class="input-group">
-    <i class="fa fa-id-card"></i>
-    <input type="text" name="cpf" id="cpf" placeholder="CPF (apenas números)" required pattern="[0-9]{11}" maxlength="11">
-    <div class="tooltip">Digite um CPF válido (11 dígitos)</div>
-  </div>
+    <div class="input-group">
+      <i class="fa fa-id-card"></i>
+      <input type="text" name="cpf" id="cpf" placeholder="CPF (apenas números)" required pattern="[0-9]{11}" maxlength="11">
+      <div class="tooltip">Digite um CPF válido (11 dígitos)</div>
+    </div>
 
-  <div class="input-group">
-    <i class="fa fa-globe"></i>
-    <select name="pais" id="pais" required>
-      <option value="">Selecione seu país</option>
-      <option value="Brasil">Brasil</option>
-      <option value="Portugal">Portugal</option>
-      <option value="Estados Unidos">Estados Unidos</option>
-      <option value="Argentina">Argentina</option>
-      <option value="Outro">Outro</option>
-    </select>
-    <div class="tooltip">Selecione seu país</div>
-  </div>
+    <div class="input-group">
+      <i class="fa fa-globe"></i>
+      <select name="pais" id="pais" required>
+        <option value="">Selecione seu país</option>
+        <option value="Brasil">Brasil</option>
+        <option value="Portugal">Portugal</option>
+        <option value="Estados Unidos">Estados Unidos</option>
+        <option value="Argentina">Argentina</option>
+        <option value="Outro">Outro</option>
+      </select>
+      <div class="tooltip">Selecione seu país</div>
+    </div>
 
-  <button type="button" onclick="irParaTela1()">Próximo</button>
-  <button type="button" onclick="irParaLogin()">Já possui cadastro? Login</button>
+    <button type="button" onclick="irParaTela1()">Próximo</button>
+  </form> <button type="button" onclick="irParaLogin()">Já possui cadastro? Login</button>
 </div>
 
 <div class="tela1">
   <h2>Finalize seu cadastro</h2>
 
-  <div class="input-group">
-    <i class="fa fa-envelope"></i>
-    <input type="email" name="email" id="email" placeholder="E-mail" required>
-    <div class="tooltip">Digite um e-mail válido</div>
-  </div>
+  <form id="formCadastro" method="POST" action="/cadastrar">
+    <div class="input-group">
+      <i class="fa fa-envelope"></i>
+      <input type="email" name="email" id="email" placeholder="E-mail" required>
+      <div class="tooltip">Digite um e-mail válido</div>
+    </div>
 
-  <div class="input-group">
-    <i class="fa fa-phone"></i>
-    <input type="text" name="telefone" id="telefone" placeholder="Telefone com DDD" required>
-    <div class="tooltip">Digite seu telefone</div>
-  </div>
+    <div class="input-group">
+      <i class="fa fa-phone"></i>
+      <input type="text" name="telefone" id="telefone" placeholder="Telefone com DDD" required>
+      <div class="tooltip">Digite seu telefone</div>
+    </div>
 
-  <div class="input-group">
-    <i class="fa fa-lock"></i>
-    <input type="password" name="senha" id="senha" placeholder="Criar senha (min. 6 caracteres)" required minlength="6">
-    <div class="tooltip">A senha deve ter pelo menos 6 caracteres</div>
-  </div>
+    <div class="input-group">
+      <i class="fa fa-lock"></i>
+      <input type="password" name="senha" id="senha" placeholder="Criar senha (min. 6 caracteres)" required minlength="6">
+      <div class="tooltip">A senha deve ter pelo menos 6 caracteres</div>
+    </div>
 
-  <div class="input-group">
-    <i class="fa fa-lock"></i>
-    <input type="password" id="confirmarSenha" placeholder="Confirmar senha" required>
-    <div class="tooltip">Confirme sua senha</div>
-    <div class="password-error">As senhas não correspondem!</div>
-  </div>
+    <div class="input-group">
+      <i class="fa fa-lock"></i>
+      <input type="password" id="confirmarSenha" placeholder="Confirmar senha" required>
+      <div class="tooltip">Confirme sua senha</div>
+      <div class="password-error">As senhas não correspondem!</div>
+    </div>
 
-  <button type="button" onclick="irParaTela2()">Finalizar Cadastro</button>
+    <button type="button" onclick="irParaTela2()">Finalizar Cadastro</button>
+  </form>
 </div>
 
 <div class="tela2">
@@ -553,8 +554,6 @@ html_code = """
     <button type="button" onclick="voltarParaCadastro()">Voltar para Cadastro</button>
   </form>
 </div>
-
-</form>
 
 <script>
 console.log("Bubble SA App iniciado - Render Deploy Ready");
@@ -586,6 +585,10 @@ def health_check():
 
 @app.route('/cadastrar', methods=['POST'])
 def cadastrar():
+    # O formCadastroParte1 não envia os dados diretamente, mas sim irParaTela1().
+    # Os dados de nome, cpf, pais virão do formulário da tela1, junto com email, telefone e senha.
+    # Por isso, coletamos todos os dados aqui.
+
     nome = request.form.get('nome', '').strip()
     cpf = request.form.get('cpf', '').strip()
     pais = request.form.get('pais', '').strip()
