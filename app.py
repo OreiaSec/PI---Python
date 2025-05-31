@@ -5,7 +5,7 @@ from mysql.connector import Error
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
 from datetime import datetime
-import functools # ADICIONADO: Importar functools para o decorador
+import functools
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'sua_chave_secreta_super_segura_aqui')
@@ -173,13 +173,13 @@ def verificar_login(email, senha):
             cursor.close()
             connection.close()
 
-# Decorador para verificar se o usuário está logado (REMOVIDO o Flash-MySQLdb. Adicionado aqui)
+# Decorador para verificar se o usuário está logado
 def login_required(f):
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             flash('Você precisa estar logado para acessar esta página.', 'error')
-            return redirect(url_for('index')) # Redireciona para a página inicial/login
+            return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -687,8 +687,27 @@ def login():
 @login_required # Aplicando o decorador de login
 def dashboard():
     user_name = session.get('user_name', 'Usuário')
-    # A template 'user_dashboard.html' precisa estar na pasta 'templates'
-    return render_template('user_dashboard.html', user_name=user_name)
+    user_id = session.get('user_id') # Obter user_id para a verificação do status
+    connection = None
+    has_umbrella = False
+    try:
+        connection = get_db_connection()
+        if connection:
+            cursor = connection.cursor()
+            # Verifica se o usuário tem um guarda-chuva "ativo" (não devolvido)
+            # A coluna 'ativo' foi adicionada, então a lógica deve usá-la.
+            cursor.execute("SELECT COUNT(*) FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE", (user_id,))
+            has_umbrella = cursor.fetchone()[0] > 0
+    except Error as e:
+        print(f"Erro ao obter status do guarda-chuva para o dashboard: {e}")
+        # flash(f"Erro ao carregar status do guarda-chuva: {e}", 'error') # Pode adicionar para debug
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+    # Passar o status do guarda-chuva para o template
+    return render_template('user_dashboard.html', user_name=user_name, has_umbrella=has_umbrella)
 
 @app.route('/logout')
 def logout():
@@ -699,9 +718,9 @@ def logout():
     flash('Você foi desconectado.', 'message')
     return redirect(url_for('index'))
 
-# --- NOVA LÓGICA PARA GUARDA-CHUVA ---
+# --- LÓGICA CORRIGIDA PARA GUARDA-CHUVA ---
 
-# Rota para verificar o status do guarda-chuva do usuário
+# Rota para verificar o status do guarda-chuva do usuário (usada pelo JS)
 @app.route('/status_guarda_chuva', methods=['GET'])
 @login_required
 def status_guarda_chuva():
@@ -711,13 +730,13 @@ def status_guarda_chuva():
         connection = get_db_connection()
         if not connection:
             return jsonify({'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}), 500
-        
+
         cursor = connection.cursor()
-        
+
         # Verifica se o usuário tem um guarda-chuva "ativo" (não devolvido)
         cursor.execute("SELECT COUNT(*) FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE", (user_id,))
         has_umbrella = cursor.fetchone()[0] > 0
-        
+
         return jsonify({'status': 'success', 'has_umbrella': has_umbrella})
 
     except Error as e:
@@ -738,7 +757,7 @@ def registrar_retirada():
         connection = get_db_connection()
         if not connection:
             return jsonify({'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}), 500
-        
+
         cursor = connection.cursor()
         # Primeiro, verifica se o usuário já tem um guarda-chuva ativo
         cursor.execute("SELECT COUNT(*) FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE", (user_id,))
@@ -752,16 +771,17 @@ def registrar_retirada():
             return jsonify({'status': 'error', 'message': 'Código de retirada não fornecido.'}), 400
 
         # Inserir o registro na tabela umbrella_retirada
-        # 'ativo' é TRUE por padrão (ou definido explicitamente aqui)
+        # 'ativo' é TRUE por padrão. data_retirada é CURRENT_TIMESTAMP por padrão no DB.
         cursor.execute("INSERT INTO umbrella_retirada (user_id, codigo_guarda_chuva, ativo) VALUES (%s, %s, TRUE)",
                         (user_id, codigo_guarda_chuva))
-        connection.commit()
+        connection.commit() # Confirma a transação
 
         print(f"Retirada registrada para user_id={user_id}, Código: '{codigo_guarda_chuva}'")
         return jsonify({'status': 'success', 'message': 'Por favor, retire seu guarda-chuva.'})
 
     except Error as e:
-        connection.rollback() # Em caso de erro, desfaz a operação
+        if connection and connection.is_connected():
+            connection.rollback() # Em caso de erro, desfaz a operação
         print(f"Erro ao registrar retirada: {e}")
         return jsonify({'status': 'error', 'message': f'Erro interno do servidor: {str(e)}'}), 500
     finally:
@@ -782,7 +802,7 @@ def registrar_devolucao():
 
         cursor = connection.cursor(dictionary=True) # Usar dictionary=True para acessar o 'id'
 
-        # Verifica se o usuário tem um guarda-chuva ativo para devolver
+        # Busca o último guarda-chuva ativo (não devolvido) que o usuário retirou
         cursor.execute("SELECT id FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE ORDER BY data_retirada DESC LIMIT 1", (user_id,))
         retirada_ativa = cursor.fetchone()
 
@@ -792,15 +812,17 @@ def registrar_devolucao():
         retirada_id = retirada_ativa['id'] # Pega o ID da retirada ativa
         
         # Atualiza o registro da retirada ativa, definindo data_devolucao e ativo como FALSE
+        # datetime.now() insere a data e hora atual.
         cursor.execute("UPDATE umbrella_retirada SET data_devolucao = %s, ativo = FALSE WHERE id = %s",
                         (datetime.now(), retirada_id))
-        connection.commit()
+        connection.commit() # Confirma a transação
 
         print(f"Devolução registrada para user_id={user_id}, Retirada ID: {retirada_id}")
         return jsonify({'status': 'success', 'message': 'Guarda-chuva devolvido com sucesso!'})
 
     except Error as e:
-        connection.rollback()
+        if connection and connection.is_connected():
+            connection.rollback()
         print(f"Erro ao registrar devolução: {e}")
         return jsonify({'status': 'error', 'message': f'Erro interno do servidor: {str(e)}'}), 500
     finally:
