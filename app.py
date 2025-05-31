@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, render_template_string, redirect, url_for, flash
+from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template # Adicionado 'session', 'render_template'
 import mysql.connector
 from mysql.connector import Error
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -154,7 +154,7 @@ def verificar_login(email, senha):
             cursor.close()
             connection.close()
 
-# Código HTML (mesmo da versão anterior)
+# Código HTML (mesmo da versão anterior, sem alterações neste bloco)
 html_code = """
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -566,6 +566,9 @@ console.log("Bubble SA App iniciado - Render Deploy Ready");
 
 @app.route('/')
 def index():
+    # Verifica se o usuário já está logado
+    if 'user_name' in session:
+        return redirect(url_for('dashboard'))
     return render_template_string(html_code)
 
 @app.route('/health')
@@ -626,22 +629,39 @@ def login():
         flash('Email e senha são obrigatórios!', 'error')
         return redirect(url_for('index'))
 
-    sucesso, mensagem = verificar_login(email, senha)
+    sucesso, user_name = verificar_login(email, senha) # user_name agora pode ser o nome se login for sucesso
 
     if sucesso:
-        flash(f'Bem-vindo de volta, {mensagem}!', 'message')
+        session['user_name'] = user_name # Armazena o nome do usuário na sessão
+        flash(f'Bem-vindo de volta, {user_name}!', 'message')
+        return redirect(url_for('dashboard')) # Redireciona para a nova tela de dashboard
     else:
-        flash(mensagem, 'error')
+        flash(user_name, 'error') # user_name conterá a mensagem de erro aqui
 
     return redirect(url_for('index'))
 
-# NOVO JEITO DE INICIALIZAR O BANCO DE DADOS:
-# Este bloco será executado quando o contexto da aplicação Flask for empurrado,
-# o que acontece de forma confiável durante a inicialização do Gunicorn.
+# Nova rota para a tela do usuário logado (dashboard)
+@app.route('/dashboard')
+def dashboard():
+    if 'user_name' in session:
+        # Renderiza o novo template user_dashboard.html, passando o nome do usuário
+        return render_template('user_dashboard.html', user_name=session['user_name'])
+    else:
+        flash('Você precisa fazer login para acessar esta página.', 'error')
+        return redirect(url_for('index')) # Redireciona para a página de login se não estiver logado
+
+# Nova rota para logout
+@app.route('/logout')
+def logout():
+    session.pop('user_name', None) # Remove o nome do usuário da sessão
+    flash('Você foi desconectado.', 'message')
+    return redirect(url_for('index')) # Redireciona para a página inicial (cadastro/login)
+
+# Inicialização do banco de dados (mesmo que antes)
 with app.app_context():
     init_database()
 
-# Para desenvolvimento local (ainda no bloco if __name__ == '__main__':)
+# Para desenvolvimento local
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
