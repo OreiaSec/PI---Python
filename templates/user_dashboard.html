@@ -237,6 +237,7 @@
             text-align: center;
             transition: margin-left 0.3s ease-in-out;
             color: white; /* Cor do texto no conteúdo principal */
+            min-height: calc(100vh - var(--header-height)); /* Garante que o conteúdo principal ocupe o restante da altura */
         }
 
         .sidebar.expanded ~ .main-content {
@@ -315,6 +316,99 @@
             background-color: #333; /* Cor de fundo enquanto o mapa carrega */
         }
 
+        /* Overlay para o popup de retirada de guarda-chuva */
+        .umbrella-overlay {
+            display: none; /* Escondido por padrão */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Fundo escurecido */
+            z-index: 1001; /* Acima de tudo */
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .umbrella-overlay.active {
+            display: flex; /* Mostra quando ativo */
+            opacity: 1;
+        }
+
+        .umbrella-overlay-content {
+            background-color: rgba(255, 255, 255, 0.95); /* Fundo semi-transparente claro */
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            color: #333; /* Cor do texto no popup */
+            max-width: 90%;
+            width: 400px;
+            transform: scale(0.9); /* Começa um pouco menor */
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .umbrella-overlay.active .umbrella-overlay-content {
+            transform: scale(1); /* Expande para o tamanho normal */
+        }
+
+        .umbrella-overlay-content i.fa-umbrella {
+            font-size: 80px; /* Tamanho do ícone de guarda-chuva */
+            color: var(--primary-color); /* Cor do ícone */
+            margin-bottom: 20px;
+            animation: bounce 0.8s infinite alternate; /* Animação simples */
+        }
+
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-10px); }
+        }
+
+        .umbrella-overlay-content h2 {
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            color: #333;
+        }
+
+        .umbrella-overlay-content .input-group {
+            margin-bottom: 20px;
+        }
+
+        .umbrella-overlay-content .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .umbrella-overlay-content .input-group input[type="text"] {
+            width: calc(100% - 20px); /* Ajusta para padding */
+            padding: 12px 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1.1em;
+            text-align: center; /* Centraliza o texto do código */
+            letter-spacing: 2px; /* Espaçamento entre caracteres */
+        }
+
+        .umbrella-overlay-content .btn-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #888;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        .umbrella-overlay-content .btn-close:hover {
+            color: #333;
+        }
 
         /* Media Queries para Responsividade */
         @media (max-width: 768px) {
@@ -364,6 +458,15 @@
             }
             #mapid {
                 height: 300px; /* Ajusta a altura do mapa em mobile */
+            }
+            .umbrella-overlay-content {
+                padding: 20px;
+            }
+            .umbrella-overlay-content i.fa-umbrella {
+                font-size: 60px;
+            }
+            .umbrella-overlay-content h2 {
+                font-size: 1.5em;
             }
         }
     </style>
@@ -418,8 +521,20 @@
         
         <div id="mapid"></div>
 
-        <a href="#" class="action-button">Gerenciar Locais</a>
+        <button id="umbrellaActionButton" class="action-button">Eu quero um guarda-chuva / Retirar um guarda-chuva</button>
     </main>
+
+    <div id="umbrellaOverlay" class="umbrella-overlay">
+        <div class="umbrella-overlay-content">
+            <button class="btn-close" id="closeUmbrellaOverlay">&times;</button>
+            <i class="fas fa-umbrella"></i> <h2>Retirar Guarda-Chuva</h2>
+            <div class="input-group">
+                <label for="retrievalCode">Digite o Código de Retirada:</label>
+                <input type="text" id="retrievalCode" placeholder="Ex: ABC123DEF" maxlength="10">
+            </div>
+            <button class="action-button">Confirmar Retirada</button>
+        </div>
+    </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
@@ -427,6 +542,11 @@
         const hamburgerMenu = document.getElementById('hamburgerMenu');
         const mainContent = document.getElementById('mainContent');
         const userDropdown = document.getElementById('userDropdown');
+        
+        // Novos elementos para o overlay
+        const umbrellaActionButton = document.getElementById('umbrellaActionButton');
+        const umbrellaOverlay = document.getElementById('umbrellaOverlay');
+        const closeUmbrellaOverlay = document.getElementById('closeUmbrellaOverlay');
 
         function toggleSidebar() {
             sidebar.classList.toggle('expanded');
@@ -440,6 +560,23 @@
 
         hamburgerMenu.addEventListener('click', toggleSidebar);
         userDropdown.addEventListener('click', toggleUserDropdown);
+
+        // Funções para o overlay do guarda-chuva
+        umbrellaActionButton.addEventListener('click', () => {
+            umbrellaOverlay.classList.add('active');
+        });
+
+        closeUmbrellaOverlay.addEventListener('click', () => {
+            umbrellaOverlay.classList.remove('active');
+        });
+
+        // Fechar overlay clicando fora do conteúdo (mas não no botão que o abre)
+        umbrellaOverlay.addEventListener('click', (event) => {
+            if (event.target === umbrellaOverlay) { // Verifica se o clique foi diretamente no fundo do overlay
+                umbrellaOverlay.classList.remove('active');
+            }
+        });
+
 
         // Close dropdown if clicked outside
         document.addEventListener('click', function(event) {
@@ -487,28 +624,28 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            // Define o ícone personalizado
+            // Define o ícone personalizado usando sua logo.png da pasta static
             var umbrellaIcon = L.icon({
-                iconUrl: 'https://i.postimg.cc/26VcMNnf/Bubble-SA-PNG.png', // Substitua pelo URL da sua logo ou ícone de guarda-chuva
-                iconSize: [32, 32], // Tamanho do ícone
-                iconAnchor: [16, 32], // Ponto do ícone que corresponde à localização do marcador
-                popupAnchor: [0, -32] // Ponto relativo onde o popup deve abrir
+                iconUrl: '/static/logo.png', // Caminho para sua logo.png na pasta static
+                iconSize: [40, 40], // Tamanho ideal da sua logo (ajuste conforme necessário)
+                iconAnchor: [20, 40], // Metade da largura, altura total para a base do ícone
+                popupAnchor: [0, -40] // Para o popup aparecer acima da logo
             });
 
             // Adiciona marcadores para os pontos de retirada
-            L.marker([-23.5466, -46.6358], {icon: umbrellaIcon}).addTo(map) // Loja Do Dinho
+            L.marker([-23.5466, -46.6358], {icon: umbrellaIcon}).addTo(map)
                 .bindPopup('<b>Ponto de Retirada - Leão</b><br>Loja Do Dinho GUARDA-CHUVA ATACADO');
 
-            L.marker([-23.5413, -46.6353], {icon: umbrellaIcon}).addTo(map) // Lucky star Distribuidora
+            L.marker([-23.5413, -46.6353], {icon: umbrellaIcon}).addTo(map)
                 .bindPopup('<b>Ponto de Retirada - Tigre</b><br>Lucky star Distribuidora Guarda-chuva atacado');
 
-            L.marker([-23.5623, -46.6475], {icon: umbrellaIcon}).addTo(map) // Voyagem guarda chuvas
+            L.marker([-23.5623, -46.6475], {icon: umbrellaIcon}).addTo(map)
                 .bindPopup('<b>Ponto de Retirada - Lobo</b><br>Voyagem guarda chuvas');
 
-            L.marker([-23.5839, -46.6403], {icon: umbrellaIcon}).addTo(map) // Ao Para Água
+            L.marker([-23.5839, -46.6403], {icon: umbrellaIcon}).addTo(map)
                  .bindPopup('<b>Ponto de Retirada - Urso</b><br>Ao Para Água Presentes e Consertos de Guarda-chuvas');
 
-           L.marker([-23.5042, -46.4950], {icon: umbrellaIcon}).addTo(map)  // JL Fabrica
+           L.marker([-23.5042, -46.4950], {icon: umbrellaIcon}).addTo(map)
                 .bindPopup('<b>Ponto de Retirada - Águia</b><br>JLV Fabrica de Guarda-Sóis e Ombrelones Personalizados');
         });
     </script>
