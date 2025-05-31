@@ -10,11 +10,11 @@ app.secret_key = os.environ.get('SECRET_KEY', 'sua_chave_secreta_super_segura_aq
 
 # Configurações do banco de dados MySQL - usando variáveis de ambiente para segurança
 DB_CONFIG = {
-    'host': os.environ.get('DB_HOST'),  
+    'host': os.environ.get('DB_HOST'),
     'port': int(os.environ.get('DB_PORT', 3306)),
-    'database': os.environ.get('DB_NAME'), 
-    'user': os.environ.get('DB_USER'), 
-    'password': os.environ.get('DB_PASSWORD'), 
+    'database': os.environ.get('DB_NAME'),
+    'user': os.environ.get('DB_USER'),
+    'password': os.environ.get('DB_PASSWORD'),
     'charset': 'utf8mb4',
     'collation': 'utf8mb4_unicode_ci',
     'autocommit': True,
@@ -26,7 +26,7 @@ def get_db_connection():
     """Estabelece conexão com o banco de dados MySQL com retry"""
     max_retries = 3
     retry_count = 0
-    
+
     while retry_count < max_retries:
         try:
             connection = mysql.connector.connect(**DB_CONFIG)
@@ -39,7 +39,7 @@ def get_db_connection():
             if retry_count >= max_retries:
                 print("Máximo de tentativas de conexão excedido")
                 return None
-    
+
     return None
 
 def init_database():
@@ -48,7 +48,7 @@ def init_database():
         connection = get_db_connection()
         if connection:
             cursor = connection.cursor()
-            
+
             # SQL para criar a tabela usuarios baseada na estrutura que vi na imagem
             create_table_query = """
             CREATE TABLE IF NOT EXISTS users_from_bb (
@@ -64,11 +64,11 @@ def init_database():
                 INDEX idx_cpf (cpf)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
-            
+
             cursor.execute(create_table_query)
             connection.commit()
             print("Tabela 'users_from_bb' criada ou já existe.")
-            
+
     except Error as e:
         print(f"Erro ao criar tabela: {e}")
     finally:
@@ -92,32 +92,32 @@ def inserir_usuario(nome, cpf, pais, email, telefone, senha):
         connection = get_db_connection()
         if not connection:
             return False, "Erro de conexão com o banco de dados!"
-            
+
         cursor = connection.cursor()
-        
+
         # Verificar se CPF ou email já existem
         check_query = "SELECT id FROM users_from_bb WHERE cpf = %s OR email = %s"
         cursor.execute(check_query, (cpf, email))
         existing_user = cursor.fetchone()
-        
+
         if existing_user:
             return False, "CPF ou email já cadastrados!"
-        
+
         # Hash da senha para segurança
         senha_hash = generate_password_hash(senha)
-        
+
         # Inserir novo usuário
         insert_query = """
         INSERT INTO users_from_bb (nome, cpf, pais, email, telefone, senha)
         VALUES (%s, %s, %s, %s, %s, %s)
         """
-        
+
         cursor.execute(insert_query, (nome, cpf, pais, email, telefone, senha_hash))
         connection.commit()
-        
+
         print(f"Usuário cadastrado: {nome} - {email}")
         return True, "Usuário cadastrado com sucesso!"
-        
+
     except Error as e:
         print(f"Erro ao inserir usuário: {e}")
         return False, f"Erro no banco de dados: {str(e)}"
@@ -133,19 +133,19 @@ def verificar_login(email, senha):
         connection = get_db_connection()
         if not connection:
             return False, "Erro de conexão com o banco de dados!"
-            
+
         cursor = connection.cursor()
-        
+
         query = "SELECT id, nome, senha FROM users_from_bb WHERE email = %s"
         cursor.execute(query, (email,))
         user = cursor.fetchone()
-        
+
         if user and check_password_hash(user[2], senha):
             print(f"Login realizado: {user[1]} - {email}")
             return True, user[1]  # Retorna True e o nome do usuário
         else:
             return False, "Email ou senha incorretos!"
-            
+
     except Error as e:
         print(f"Erro ao verificar login: {e}")
         return False, f"Erro no banco de dados: {str(e)}"
@@ -213,8 +213,8 @@ html_code = """
       margin-bottom: 10px;
       opacity: 0;
       animation: fadeIn 1.5s ease forwards,
-                 float 3s ease-in-out infinite,
-                 pulse 1s ease-in-out infinite;
+                   float 3s ease-in-out infinite,
+                   pulse 1s ease-in-out infinite;
     }
     @keyframes fadeIn {
       from { opacity: 0; transform: scale(0.5); }
@@ -259,7 +259,7 @@ html_code = """
     .input-group input:invalid, .input-group select:invalid {
       border-color: #dc3545;
     }
-    
+
     .tooltip {
       position: absolute;
       top: calc(100% + 8px);
@@ -278,7 +278,7 @@ html_code = """
       pointer-events: none;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
-    
+
     .tooltip::before {
       content: '';
       position: absolute;
@@ -289,14 +289,14 @@ html_code = """
       border-style: solid;
       border-color: transparent transparent #333 transparent;
     }
-    
+
     .input-group input:focus:invalid + .tooltip,
     .input-group select:focus:invalid + .tooltip,
     .input-group input:focus:placeholder-shown + .tooltip {
       opacity: 1;
       visibility: visible;
     }
-    
+
     .password-error {
       position: absolute;
       top: calc(100% + 8px);
@@ -315,7 +315,7 @@ html_code = """
       white-space: nowrap;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
-    
+
     .password-error::before {
       content: '';
       position: absolute;
@@ -326,12 +326,12 @@ html_code = """
       border-style: solid;
       border-color: transparent transparent #dc3545 transparent;
     }
-    
+
     .password-error.show {
       opacity: 1;
       visibility: visible;
     }
-    
+
     button {
       margin-top: 15px;
       padding: 12px 25px;
@@ -394,7 +394,7 @@ html_code = """
       let telefone = document.getElementById("telefone").value;
       let senha = document.getElementById("senha").value;
       let confirmar = document.getElementById("confirmarSenha").value;
-      
+
       if (email === "" || telefone === "" || senha === "" || confirmar === "") {
         showEmptyFieldTooltips(['email', 'telefone', 'senha', 'confirmarSenha']);
         return;
@@ -405,7 +405,7 @@ html_code = """
       }
       document.getElementById("formCadastro").submit();
     }
-    
+
     function showEmptyFieldTooltips(fieldIds) {
       fieldIds.forEach(fieldId => {
         const field = document.getElementById(fieldId);
@@ -420,7 +420,7 @@ html_code = """
         }
       });
     }
-    
+
     function showPasswordError() {
       const errorDiv = document.querySelector('.password-error');
       errorDiv.classList.add('show');
@@ -433,12 +433,12 @@ html_code = """
       document.querySelector(".container").style.display = "none";
       document.querySelector(".tela2").style.display = "flex";
     }
-    
+
     function voltarParaCadastro() {
       document.querySelector(".tela2").style.display = "none";
       document.querySelector(".container").style.display = "flex";
     }
-    
+
     document.addEventListener('DOMContentLoaded', function() {
       const inputs = document.querySelectorAll('input, select');
       inputs.forEach(input => {
@@ -535,7 +535,7 @@ html_code = """
 
 <div class="tela2">
   <h2>Login</h2>
-  
+
   <form method="POST" action="/login">
     <div class="input-group">
       <i class="fa fa-envelope"></i>
@@ -556,7 +556,6 @@ html_code = """
 
 </form>
 
-<!-- Health check endpoint info -->
 <script>
 console.log("Bubble SA App iniciado - Render Deploy Ready");
 </script>
@@ -595,22 +594,22 @@ def cadastrar():
     if not all([nome, cpf, pais, email, telefone, senha]):
         flash('Todos os campos são obrigatórios!', 'error')
         return redirect(url_for('index'))
-    
+
     if not validar_cpf(cpf):
         flash('CPF deve conter exatamente 11 dígitos!', 'error')
         return redirect(url_for('index'))
-    
+
     if not validar_email(email):
         flash('Por favor, digite um email válido!', 'error')
         return redirect(url_for('index'))
-    
+
     if len(senha) < 6:
         flash('A senha deve ter pelo menos 6 caracteres!', 'error')
         return redirect(url_for('index'))
 
     # Inserir no banco de dados
     sucesso, mensagem = inserir_usuario(nome, cpf, pais, email, telefone, senha)
-    
+
     if sucesso:
         flash(mensagem, 'message')
     else:
@@ -622,29 +621,27 @@ def cadastrar():
 def login():
     email = request.form.get('email_login', '').strip().lower()
     senha = request.form.get('senha_login', '')
-    
+
     if not email or not senha:
         flash('Email e senha são obrigatórios!', 'error')
         return redirect(url_for('index'))
-    
+
     sucesso, mensagem = verificar_login(email, senha)
-    
+
     if sucesso:
         flash(f'Bem-vindo de volta, {mensagem}!', 'message')
     else:
         flash(mensagem, 'error')
-    
+
     return redirect(url_for('index'))
 
-# Inicializar banco na primeira execução
-#@app.before_first_request  # Corretamente comentado
-#def initialize():          # Corretamente comentado
-#    init_database()        # Esta linha não deve estar aqui, pois está comentada e com indentação errada
+# NOVO JEITO DE INICIALIZAR O BANCO DE DADOS:
+# Este bloco será executado quando o contexto da aplicação Flask for empurrado,
+# o que acontece de forma confiável durante a inicialização do Gunicorn.
+with app.app_context():
+    init_database()
 
+# Para desenvolvimento local (ainda no bloco if __name__ == '__main__':)
 if __name__ == '__main__':
-    # Chame init_database() diretamente aqui, com a indentação correta
-    init_database()  # <-- ESTA É A LINHA QUE DEVE SER ADICIONADA/MOVIDA AQUI, COM ESTA INDENTAÇÃO
-
-    # Para desenvolvimento local
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
