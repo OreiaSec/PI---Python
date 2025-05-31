@@ -637,11 +637,14 @@ def login():
     return redirect(url_for('index'))
 
 # Inicializar banco na primeira execução
-@app.before_first_request
-def initialize():
-    init_database()
+#@app.before_first_request  # Corretamente comentado
+#def initialize():          # Corretamente comentado
+#    init_database()        # Esta linha não deve estar aqui, pois está comentada e com indentação errada
 
 if __name__ == '__main__':
+    # Chame init_database() diretamente aqui, com a indentação correta
+    init_database()  # <-- ESTA É A LINHA QUE DEVE SER ADICIONADA/MOVIDA AQUI, COM ESTA INDENTAÇÃO
+
     # Para desenvolvimento local
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
