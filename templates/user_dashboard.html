@@ -530,7 +530,9 @@
         <div class="umbrella-overlay-content">
             <button class="btn-close" id="closeUmbrellaOverlay">&times;</button>
             <i class="fas fa-umbrella"></i> <h2>Seu Código de Retirada</h2>
-            <div class="generated-code" id="retrievalCodeDisplay"></div> <button class="action-button" id="confirmOkButton">OK</button> </div>
+            <div class="generated-code" id="retrievalCodeDisplay"></div>
+            <button class="action-button" id="confirmOkButton">OK</button>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -581,13 +583,42 @@
             umbrellaOverlay.classList.remove('active');
         });
 
-        // Fechar overlay clicando no botão "OK"
+        // Ação do botão "OK" no overlay
         confirmOkButton.addEventListener('click', () => {
-            umbrellaOverlay.classList.remove('active');
-            // Aqui você pode adicionar lógica para realmente confirmar a retirada
-            // Por exemplo, enviar o código gerado para um servidor, etc.
-            console.log('Código de retirada confirmado:', retrievalCodeDisplay.textContent);
-            alert('Guarda-chuva retirado com sucesso! Código: ' + retrievalCodeDisplay.textContent);
+            const generatedCode = retrievalCodeDisplay.textContent;
+
+            // Faz a requisição POST para o backend
+            fetch('/registrar_retirada', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ codigo: generatedCode })
+            })
+            .then(response => {
+                // Verifica se a resposta HTTP é OK (status 2xx)
+                if (!response.ok) {
+                    // Se a resposta não for OK, tenta ler a mensagem de erro do backend
+                    return response.json().then(errData => {
+                        throw new Error(errData.message || 'Erro desconhecido ao registrar retirada.');
+                    });
+                }
+                return response.json(); // Se OK, parseia o JSON
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Guarda-chuva retirado com sucesso! Código: ' + generatedCode + '. ' + data.message);
+                    umbrellaOverlay.classList.remove('active'); // Fecha o overlay após sucesso
+                } else {
+                    // Este bloco será acionado se o backend retornar status 200 mas com status:'error' no JSON
+                    alert('Erro ao registrar retirada: ' + data.message);
+                }
+            })
+            .catch(error => {
+                // Captura erros de rede ou erros lançados pelo .then(response => { ... })
+                console.error('Erro na requisição ou no servidor:', error);
+                alert('Ocorreu um erro ao tentar registrar a retirada: ' + error.message);
+            });
         });
 
         // Fechar overlay clicando fora do conteúdo (mas não no botão que o abre)
@@ -663,9 +694,9 @@
                 .bindPopup('<b>Ponto de Retirada - Lobo</b><br>Voyagem guarda chuvas');
 
             L.marker([-23.5839, -46.6403], {icon: umbrellaIcon}).addTo(map)
-                 .bindPopup('<b>Ponto de Retirada - Urso</b><br>Ao Para Água Presentes e Consertos de Guarda-chuvas');
+                    .bindPopup('<b>Ponto de Retirada - Urso</b><br>Ao Para Água Presentes e Consertos de Guarda-chuvas');
 
-           L.marker([-23.5042, -46.4950], {icon: umbrellaIcon}).addTo(map)
+            L.marker([-23.5042, -46.4950], {icon: umbrellaIcon}).addTo(map)
                 .bindPopup('<b>Ponto de Retirada - Águia</b><br>JLV Fabrica de Guarda-Sóis e Ombrelones Personalizados');
         });
     </script>
