@@ -43,7 +43,7 @@ def get_db_connection():
     return None
 
 def init_database():
-    """Cria a tabela de usuários se ela não existir e a tabela umbrella_retirada"""
+    """Cria a tabela de usuários se ela não existir, a tabela umbrella_retirada e a tabela umbrella_devolucao"""
     try:
         connection = get_db_connection()
         if connection:
@@ -67,8 +67,8 @@ def init_database():
             cursor.execute(create_users_table_query)
             print("Tabela 'users_from_bb' criada ou já existe.")
 
-            # SQL para criar a tabela umbrella_retirada (adicionei aqui para garantir que seja criada se não estiver)
-            create_umbrella_table_query = """
+            # SQL para criar a tabela umbrella_retirada
+            create_umbrella_retirada_table_query = """
             CREATE TABLE IF NOT EXISTS umbrella_retirada (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 nome_usuario VARCHAR(255) NOT NULL,
@@ -80,8 +80,23 @@ def init_database():
                 timestamp_retirada DATETIME DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
-            cursor.execute(create_umbrella_table_query)
+            cursor.execute(create_umbrella_retirada_table_query)
             print("Tabela 'umbrella_retirada' criada ou já existe.")
+
+            # SQL para criar a tabela umbrella_devolucao
+            create_umbrella_devolucao_table_query = """
+            CREATE TABLE IF NOT EXISTS umbrella_devolucao (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                retirada_id INT NOT NULL, -- Chave estrangeira que referencia o ID da retirada na tabela 'umbrella_retirada'
+                data_devolucao DATE NOT NULL,
+                hora_devolucao TIME NOT NULL,
+                cpf_usuario VARCHAR(11) NOT NULL, -- CPF do usuário que está devolvendo o guarda-chuva
+                timestamp_devolucao DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (retirada_id) REFERENCES umbrella_retirada(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+            cursor.execute(create_umbrella_devolucao_table_query)
+            print("Tabela 'umbrella_devolucao' criada ou já existe.")
 
             connection.commit()
 
@@ -143,31 +158,31 @@ def inserir_usuario(nome, cpf, pais, email, telefone, senha):
             connection.close()
 
 def verificar_login(email, senha):
-    """Verifica as credenciais de login e retorna dados do usuário"""
+    """Verifica as credenciais de login e retorna dados do usuário, incluindo CPF"""
     connection = None
     try:
         connection = get_db_connection()
         if not connection:
-            return False, "Erro de conexão com o banco de dados!", None, None, None # Adicione None para email, phone, fullname
+            return False, "Erro de conexão com o banco de dados!", None, None, None, None # Adicione None para CPF
 
         # Usar dictionary=True para acessar colunas pelo nome
         cursor = connection.cursor(dictionary=True)
 
-        # Selecionar nome, email e telefone também
-        query = "SELECT id, nome, email, telefone, senha FROM users_from_bb WHERE email = %s"
+        # Selecionar nome, email, telefone, CPF e ID
+        query = "SELECT id, nome, email, telefone, cpf, senha FROM users_from_bb WHERE email = %s"
         cursor.execute(query, (email,))
         user = cursor.fetchone()
 
-        if user and check_password_hash(user['senha'], senha): # Use user['senha'] para acessar
+        if user and check_password_hash(user['senha'], senha):
             print(f"Login realizado: {user['nome']} - {user['email']}")
-            # Retorna sucesso, nome, email e telefone
-            return True, user['nome'], user['email'], user['telefone'], user['id']
+            # Retorna sucesso, nome, email, telefone, CPF e ID
+            return True, user['nome'], user['email'], user['telefone'], user['cpf'], user['id']
         else:
-            return False, "Email ou senha incorretos!", None, None, None
+            return False, "Email ou senha incorretos!", None, None, None, None # Adicione None para CPF
 
     except Error as e:
         print(f"Erro ao verificar login: {e}")
-        return False, f"Erro no banco de dados: {str(e)}", None, None, None
+        return False, f"Erro no banco de dados: {str(e)}", None, None, None, None # Adicione None para CPF
     finally:
         if connection and connection.is_connected():
             cursor.close()
@@ -627,7 +642,6 @@ def cadastrar():
     # Validações
     if not all([nome, cpf, pais, email, telefone, senha]):
         flash('Todos os campos são obrigatórios!', 'error')
-        # Debugging: print(f"Campos ausentes: nome={nome}, cpf={cpf}, pais={pais}, email={email}, telefone={telefone}, senha={senha}")
         return redirect(url_for('index'))
 
     if not validar_cpf(cpf):
@@ -661,18 +675,20 @@ def login():
         flash('Email e senha são obrigatórios!', 'error')
         return redirect(url_for('index'))
 
-    # Alterado para receber mais dados do verificar_login
-    sucesso, user_name, user_email, user_phone, user_id = verificar_login(email, senha)
+    # Alterado para receber o CPF também
+    sucesso, user_name, user_email, user_phone, user_cpf, user_id = verificar_login(email, senha)
 
     if sucesso:
-        session['user_id'] = user_id # Salva o ID do usuário
+        session['user_id'] = user_id
         session['user_name'] = user_name
-        session['email'] = user_email # Salva o email na sessão
-        session['phone'] = user_phone # Salva o telefone na sessão
+        session['email'] = user_email
+        session['phone'] = user_phone
+        session['cpf'] = user_cpf # <-- Adicionado: Salva o CPF na sessão
         flash(f'Bem-vindo de volta, {user_name}!', 'message')
         return redirect(url_for('dashboard'))
     else:
-        flash(user_name, 'error') # user_name aqui conterá a mensagem de erro
+        # user_name aqui conterá a mensagem de erro se o login falhar
+        flash(user_name, 'error')
 
     return redirect(url_for('index'))
 
@@ -691,10 +707,11 @@ def logout():
     session.pop('user_name', None)
     session.pop('email', None)
     session.pop('phone', None)
+    session.pop('cpf', None) # Remove o CPF da sessão também
     flash('Você foi desconectado.', 'message')
     return redirect(url_for('index'))
 
-# --- NOVA ROTA PARA REGISTRAR RETIRADA DE GUARDA-CHUVA ---
+# --- Rota para Registrar Retirada de Guarda-Chuva ---
 @app.route('/registrar_retirada', methods=['POST'])
 def registrar_retirada():
     # Verifica se o usuário está logado
@@ -705,7 +722,7 @@ def registrar_retirada():
     data = request.get_json()
     codigo_guarda_chuva = data.get('codigo')
 
-    if not codigo_guarda_chuva:
+    if not codigo_guarda_chuza:
         return {'status': 'error', 'message': 'Código do guarda-chuva não fornecido.'}, 400
 
     # Pega os dados do usuário da sessão (garantindo que foram salvos no login)
@@ -715,8 +732,6 @@ def registrar_retirada():
 
     # Validação dos dados da sessão (devem existir)
     if not all([nome_usuario, email, telefone]):
-        # Isso indica um problema na forma como os dados da sessão são populados no login.
-        # O usuário pode ter logado, mas as informações essenciais não estão na sessão.
         return {'status': 'error', 'message': 'Dados do usuário (nome, email, telefone) não encontrados na sessão. Por favor, faça login novamente.'}, 400
 
     # Obtém data e hora atuais
@@ -749,6 +764,85 @@ def registrar_retirada():
         if connection:
             connection.rollback()
         return {'status': 'error', 'message': f'Erro no servidor ao registrar retirada: {str(e)}'}, 500
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+# --- NOVA ROTA: Registrar Devolução de Guarda-Chuva ---
+@app.route('/registrar_devolucao', methods=['POST'])
+def registrar_devolucao():
+    # 1. Verifica se o usuário está logado e se o CPF está na sessão
+    if 'user_id' not in session or 'cpf' not in session:
+        return {'status': 'error', 'message': 'Não autenticado. Faça login para registrar a devolução.'}, 401
+
+    user_cpf = session.get('cpf')
+    user_name = session.get('user_name') # Para logs e mensagens
+
+    # 2. Pega o ID da retirada do guarda-chuva enviado pelo frontend
+    # Assumimos que o frontend enviará um JSON com 'retirada_id'
+    data = request.get_json()
+    retirada_id = data.get('retirada_id')
+
+    if not retirada_id:
+        return {'status': 'error', 'message': 'ID da retirada não fornecido.'}, 400
+
+    # 3. Valida se o retirada_id é um número inteiro
+    try:
+        retirada_id = int(retirada_id)
+    except ValueError:
+        return {'status': 'error', 'message': 'ID da retirada inválido.'}, 400
+
+    connection = None
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return {'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}, 500
+
+        cursor = connection.cursor(dictionary=True) # Usar dictionary=True para facilitar
+
+        # Verificação: a retirada_id existe e pertence ao CPF do usuário?
+        check_retirada_query = """
+        SELECT ur.id FROM umbrella_retirada ur
+        JOIN users_from_bb u ON ur.email = u.email
+        WHERE ur.id = %s AND u.cpf = %s
+        """
+        cursor.execute(check_retirada_query, (retirada_id, user_cpf))
+        retirada_exists = cursor.fetchone()
+
+        if not retirada_exists:
+            return {'status': 'error', 'message': 'Retirada não encontrada ou não pertence a este usuário.'}, 404
+
+        # Verifique se já existe uma devolução para esta retirada_id
+        check_devolucao_query = "SELECT id FROM umbrella_devolucao WHERE retirada_id = %s"
+        cursor.execute(check_devolucao_query, (retirada_id,))
+        devolucao_existente = cursor.fetchone()
+
+        if devolucao_existente:
+            return {'status': 'error', 'message': 'Este guarda-chuva já foi devolvido.'}, 409 # 409 Conflict
+
+        # 5. Obtém data e hora atuais para a devolução
+        data_devolucao = datetime.now().strftime('%Y-%m-%d')
+        hora_devolucao = datetime.now().strftime('%H:%M:%S')
+
+        # 6. Insere o registro na tabela umbrella_devolucao
+        insert_query = """
+        INSERT INTO umbrella_devolucao (retirada_id, data_devolucao, hora_devolucao, cpf_usuario)
+        VALUES (%s, %s, %s, %s)
+        """
+        values = (retirada_id, data_devolucao, hora_devolucao, user_cpf)
+
+        cursor.execute(insert_query, values)
+        connection.commit()
+
+        print(f"Devolução registrada: Usuário '{user_name}' (CPF: {user_cpf}), Retirada ID: '{retirada_id}'")
+        return {'status': 'success', 'message': 'Devolução registrada com sucesso!'}, 200
+
+    except Error as e:
+        print(f"Erro ao registrar devolução no MySQL: {e}")
+        if connection:
+            connection.rollback()
+        return {'status': 'error', 'message': f'Erro no servidor ao registrar devolução: {str(e)}'}, 500
     finally:
         if connection and connection.is_connected():
             cursor.close()
