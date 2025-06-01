@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, render_template_string, redirect, url_for, flash, session, jsonify
+from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template
 import mysql.connector
 from mysql.connector import Error
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -67,8 +67,7 @@ def init_database():
             cursor.execute(create_users_table_query)
             print("Tabela 'users_from_bb' criada ou já existe.")
 
-            # SQL para criar a tabela umbrella_retirada
-            # Sem os campos de devolução, como solicitado para não alterar o modelo original de DB
+            # SQL para criar a tabela umbrella_retirada (adicionei aqui para garantir que seja criada se não estiver)
             create_umbrella_table_query = """
             CREATE TABLE IF NOT EXISTS umbrella_retirada (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -384,118 +383,15 @@ html_code = """
             border-radius: 5px;
             border: 1px solid #dc3545;
         }
-        /* Estilos para o dashboard */
-        .dashboard-container {
-            background-color: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.3);
-            width: 90%;
-            max-width: 600px;
-            border-radius: 20px;
-            padding: 30px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: white;
-        }
-        .dashboard-container h2 {
-            margin-bottom: 20px;
-        }
-        .dashboard-container .btn-acao {
-            margin-top: 20px;
-            padding: 15px 30px;
-            font-size: 18px;
-            background-color: #28a745; /* Verde para retirar */
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        .dashboard-container .btn-acao:hover {
-            background-color: #218838;
-        }
-        .dashboard-container .btn-devolver { /* Novo estilo para botão Devolver */
-            background-color: #ffc107; /* Amarelo */
-            color: #333;
-        }
-        .dashboard-container .btn-devolver:hover {
-            background-color: #e0a800;
-        }
-        .dashboard-container .logout-btn {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        .dashboard-container .logout-btn:hover {
-            background-color: #c82333;
-        }
-        .message-box { /* Estilo para a caixa de mensagem de sucesso/erro/devolução */
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: bold;
-            display: none; /* Inicia oculto */
-            background-color: rgba(40, 167, 69, 0.8); /* Padrão sucesso */
-            color: white;
-        }
-        .message-box.error {
-            background-color: rgba(220, 53, 69, 0.8);
-        }
-        .message-box.info { /* Para a mensagem de devolução */
-             background-color: rgba(0, 123, 255, 0.8);
-        }
-        .codigo-input-container {
-            margin-top: 15px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
-        .codigo-input {
-            width: 80%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-            text-align: center;
-            margin-bottom: 10px;
-        }
     </style>
 
     <script>
-        // Variável global para controlar o estado do botão do guarda-chuva
-        let guardaChuvaRetiradoEstado = false; // Inicia como não retirado
-
         window.onload = function () {
             setTimeout(() => {
                 document.querySelector(".loading-screen").style.opacity = 0;
                 setTimeout(() => {
                     document.querySelector(".loading-screen").style.display = "none";
-                    // Só mostra o container inicial se não for o dashboard
-                    if (!window.location.pathname.includes('/dashboard')) {
-                        document.querySelector(".container").style.display = "flex";
-                    } else {
-                        // Se for o dashboard, mostra ele
-                        document.getElementById('dashboardScreen').style.display = 'flex';
-                        // Re-verifica o estado do guarda-chuva ao carregar o dashboard
-                        // Para este requisito, manteremos o estado baseado na ação do usuário na sessão.
-                        // Em uma implementação real, você verificaria o banco de dados aqui.
-                        // Por simplicidade, vamos usar localStorage para simular o estado entre recarregamentos.
-                        if (localStorage.getItem('guardaChuvaRetirado')) {
-                            guardaChuvaRetiradoEstado = true;
-                            atualizarBotaoGuardaChuva();
-                        }
-                    }
+                    document.querySelector(".container").style.display = "flex";
                 }, 1000);
             }, 2000);
         };
@@ -582,88 +478,6 @@ html_code = """
                 });
             });
         });
-
-        // --- Lógica para o Dashboard e Guarda-chuva ---
-
-        // Função para mostrar mensagem de sucesso/erro/info
-        function showMessageBox(message, type) {
-            const messageBox = document.getElementById('messageBox');
-            messageBox.textContent = message;
-            messageBox.className = 'message-box ' + type; // Adiciona a classe de tipo (success, error, info)
-            messageBox.style.display = 'block';
-            setTimeout(() => {
-                messageBox.style.display = 'none';
-            }, 5000); // Mensagem desaparece após 5 segundos
-        }
-
-        // Função para atualizar o texto e estilo do botão
-        function atualizarBotaoGuardaChuva() {
-            const btnAcao = document.getElementById('btnAcaoGuardaChuva');
-            if (guardaChuvaRetiradoEstado) {
-                btnAcao.textContent = 'Devolver Guarda-chuva';
-                btnAcao.classList.remove('btn-acao'); // Remove a classe verde
-                btnAcao.classList.add('btn-devolver'); // Adiciona a classe amarela
-                document.getElementById('codigoInputContainer').style.display = 'none'; // Oculta o campo de código
-                document.getElementById('codigoGuardaChuva').value = ''; // Limpa o campo
-            } else {
-                btnAcao.textContent = 'Retirar Guarda-chuva';
-                btnAcao.classList.remove('btn-devolver'); // Remove a classe amarela
-                btnAcao.classList.add('btn-acao'); // Adiciona a classe verde
-                document.getElementById('codigoInputContainer').style.display = 'none'; // Oculta o campo de código
-                document.getElementById('codigoGuardaChuva').value = ''; // Limpa o campo
-            }
-        }
-
-        async function acaoGuardaChuva() {
-            const btnAcao = document.getElementById('btnAcaoGuardaChuva');
-            const codigoInputContainer = document.getElementById('codigoInputContainer');
-            const codigoInput = document.getElementById('codigoGuardaChuva');
-
-            if (!guardaChuvaRetiradoEstado) { // Estado atual: precisa retirar o guarda-chuva
-                if (codigoInputContainer.style.display === 'none' || codigoInputContainer.style.display === '') {
-                    // Primeiro clique: mostra o campo de código
-                    codigoInputContainer.style.display = 'block';
-                    btnAcao.textContent = 'Confirmar Retirada'; // Muda o texto para confirmar
-                } else {
-                    // Segundo clique: confirmar a retirada
-                    const codigo = codigoInput.value.trim();
-                    if (!codigo) {
-                        showMessageBox('Por favor, digite o código do guarda-chuva.', 'error');
-                        return;
-                    }
-
-                    try {
-                        const response = await fetch('/registrar_retirada', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ codigo: codigo }),
-                        });
-
-                        const result = await response.json();
-
-                        if (result.status === 'success') {
-                            showMessageBox(result.message, 'success');
-                            guardaChuvaRetiradoEstado = true; // Atualiza o estado
-                            localStorage.setItem('guardaChuvaRetirado', 'true'); // Persiste o estado no navegador
-                            atualizarBotaoGuardaChuva(); // Atualiza o botão
-                        } else {
-                            showMessageBox(result.message, 'error');
-                        }
-                    } catch (error) {
-                        console.error('Erro na requisição de retirada:', error);
-                        showMessageBox('Erro ao registrar retirada. Tente novamente.', 'error');
-                    }
-                }
-            } else { // Estado atual: guarda-chuva retirado, precisa devolver
-                // Ação de devolução (apenas mensagem na UI, sem backend de devolução)
-                showMessageBox('Guarda-chuva devolvido com sucesso! Agradecemos sua colaboração.', 'info');
-                guardaChuvaRetiradoEstado = false; // Atualiza o estado
-                localStorage.removeItem('guardaChuvaRetirado'); // Remove o estado persistente
-                atualizarBotaoGuardaChuva(); // Atualiza o botão de volta para "Retirar"
-            }
-        }
     </script>
 </head>
 <body>
@@ -772,31 +586,7 @@ html_code = """
     </form>
 </div>
 
-<div class="dashboard-container" id="dashboardScreen" style="display: none;">
-    <h2>Bem-vindo, {{ user_name }}!</h2>
-    <p>Aqui você pode gerenciar seu guarda-chuva.</p>
-
-    <div class="message-box" id="messageBox"></div>
-
-    <div class="codigo-input-container" id="codigoInputContainer" style="display: none;">
-        <input type="text" id="codigoGuardaChuva" class="codigo-input" placeholder="Digite o código do guarda-chuva" maxlength="6">
-    </div>
-
-    <button type="button" id="btnAcaoGuardaChuva" class="btn-acao" onclick="acaoGuardaChuva()">
-        Retirar Guarda-chuva
-    </button>
-    <a href="{{ url_for('logout') }}" class="logout-btn">Sair</a>
-</div>
-
-
 <script>
-// Chama a função para atualizar o botão quando a página do dashboard carrega
-window.addEventListener('load', function() {
-    if (window.location.pathname === '/dashboard') {
-        atualizarBotaoGuardaChuva();
-    }
-});
-
 console.log("Bubble SA App iniciado - Render Deploy Ready");
 </script>
 
@@ -818,11 +608,11 @@ def health_check():
         connection = get_db_connection()
         if connection:
             connection.close()
-            return jsonify({"status": "healthy", "database": "connected"}), 200
+            return {"status": "healthy", "database": "connected"}, 200
         else:
-            return jsonify({"status": "unhealthy", "database": "disconnected"}), 503
+            return {"status": "unhealthy", "database": "disconnected"}, 503
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return {"status": "error", "message": str(e)}, 500
 
 @app.route('/cadastrar', methods=['POST'])
 def cadastrar():
@@ -889,8 +679,8 @@ def login():
 @app.route('/dashboard')
 def dashboard():
     if 'user_name' in session:
-        # Passa user_name para o template
-        return render_template_string(html_code, user_name=session['user_name'])
+        # A template 'user_dashboard.html' precisa estar na pasta 'templates'
+        return render_template('user_dashboard.html', user_name=session['user_name'])
     else:
         flash('Você precisa fazer login para acessar esta página.', 'error')
         return redirect(url_for('index'))
@@ -901,13 +691,6 @@ def logout():
     session.pop('user_name', None)
     session.pop('email', None)
     session.pop('phone', None)
-    # Ao fazer logout, também limpamos o estado do guarda-chuva no localStorage
-    # para simular que o usuário "devolveu" ou não tem mais um guarda-chuva consigo
-    # ao iniciar uma nova sessão.
-    # Em um sistema real, isso seria gerenciado por registros de devolução no DB.
-    # search_tool.run('clear localStorage from browser javascript')
-    # A resposta é documentada em https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
-    # Isso será feito diretamente no JavaScript.
     flash('Você foi desconectado.', 'message')
     return redirect(url_for('index'))
 
@@ -916,23 +699,25 @@ def logout():
 def registrar_retirada():
     # Verifica se o usuário está logado
     if 'user_id' not in session:
-        return jsonify({'status': 'error', 'message': 'Não autenticado. Faça login para registrar a retirada.'}), 401
+        return {'status': 'error', 'message': 'Não autenticado. Faça login para registrar a retirada.'}, 401
     
     # Pega o código do guarda-chuva enviado pelo JavaScript
     data = request.get_json()
     codigo_guarda_chuva = data.get('codigo')
 
     if not codigo_guarda_chuva:
-        return jsonify({'status': 'error', 'message': 'Código do guarda-chuva não fornecido.'}), 400
+        return {'status': 'error', 'message': 'Código do guarda-chuva não fornecido.'}, 400
 
     # Pega os dados do usuário da sessão (garantindo que foram salvos no login)
-    nome_usuario = session.get('user_name') 
+    nome_usuario = session.get('user_name') # Seu campo 'nome' no banco
     email = session.get('email')
     telefone = session.get('phone')
 
     # Validação dos dados da sessão (devem existir)
     if not all([nome_usuario, email, telefone]):
-        return jsonify({'status': 'error', 'message': 'Dados do usuário (nome, email, telefone) não encontrados na sessão. Por favor, faça login novamente.'}), 400
+        # Isso indica um problema na forma como os dados da sessão são populados no login.
+        # O usuário pode ter logado, mas as informações essenciais não estão na sessão.
+        return {'status': 'error', 'message': 'Dados do usuário (nome, email, telefone) não encontrados na sessão. Por favor, faça login novamente.'}, 400
 
     # Obtém data e hora atuais
     data_retirada = datetime.now().strftime('%Y-%m-%d')
@@ -942,29 +727,10 @@ def registrar_retirada():
     try:
         connection = get_db_connection()
         if not connection:
-            return jsonify({'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}), 500
+            return {'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}, 500
         
         cursor = connection.cursor()
         
-        # Verificar se o mesmo guarda-chuva não está atualmente em posse de alguém (para evitar múltiplas retiradas do mesmo item)
-        # Atenção: Com o modelo de banco de dados atual, não há um campo 'devolucao'.
-        # Então, essa verificação é limitada a ver se o código já foi retirado uma vez.
-        # Se você permitir que o mesmo guarda-chuva seja retirado e devolvido várias vezes,
-        # essa lógica precisaria de um campo de status/devolução no DB.
-        check_umbrella_query = """
-        SELECT id FROM umbrella_retirada
-        WHERE codigo_guarda_chuva = %s
-        ORDER BY timestamp_retirada DESC LIMIT 1
-        """
-        cursor.execute(check_umbrella_query, (codigo_guarda_chuva,))
-        last_retirada = cursor.fetchone()
-
-        if last_retirada:
-            # Se já existe uma retirada, para este requisito, vamos assumir que não pode retirar de novo
-            # sem uma devolução explícita no DB (que não temos).
-            # Para o contexto atual, isso significa que "já foi retirado".
-            return jsonify({'status': 'error', 'message': 'Este guarda-chuva já está registrado como retirado.'}), 409 # Conflict
-
         insert_query = """
         INSERT INTO umbrella_retirada (nome_usuario, email, telefone, codigo_guarda_chuva, data_retirada, hora_retirada)
         VALUES (%s, %s, %s, %s, %s, %s)
@@ -975,21 +741,23 @@ def registrar_retirada():
         connection.commit() # Commit a transação
 
         print(f"Retirada registrada: Usuário '{nome_usuario}', Código: '{codigo_guarda_chuva}'")
-        return jsonify({'status': 'success', 'message': 'Guarda-chuva retirado com sucesso!'})
+        return {'status': 'success', 'message': 'Retirada registrada com sucesso!'}
 
     except Error as e:
         print(f"Erro ao inserir retirada no MySQL: {e}")
+        # Rollback em caso de erro para garantir a integridade
         if connection:
             connection.rollback()
-        return jsonify({'status': 'error', 'message': f'Erro no servidor ao registrar retirada: {str(e)}'}), 500
+        return {'status': 'error', 'message': f'Erro no servidor ao registrar retirada: {str(e)}'}, 500
     finally:
         if connection and connection.is_connected():
             cursor.close()
             connection.close()
+
 
 with app.app_context():
     init_database() # Garante que as tabelas são criadas ao iniciar a aplicação
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False) # (esse esta na pasta app.py)
+    app.run(host='0.0.0.0', port=port, debug=False)
