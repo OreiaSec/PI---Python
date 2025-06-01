@@ -586,6 +586,7 @@
 
         // Variável global para controlar o estado do botão do guarda-chuva
         // Usamos localStorage para persistir o estado entre recarregamentos da página
+        // Verifica se o usuário tem um guarda-chuva "retirado" no localStorage
         let guardaChuvaRetiradoEstado = localStorage.getItem('guardaChuvaRetirado') === 'true';
 
         function toggleSidebar() {
@@ -657,32 +658,62 @@
 
         // Event listener para o botão "Devolver guarda-chuva" (novo)
         devolverButton.addEventListener('click', async () => {
-            if (guardaChuvaRetiradoEstado) {
-                try {
+            // Antes de tentar devolver, podemos verificar se há uma retirada ativa do usuário
+            // Isso previne chamadas desnecessárias ao backend se o estado já estiver como "não retirado"
+            if (!guardaChuvaRetiradoEstado) {
+                showFlashMessage('Você não possui um guarda-chuva retirado para devolver.', 'error');
+                return;
+            }
+
+            // Confirmação antes de devolver (opcional, mas recomendado para UX)
+            if (!confirm('Tem certeza que deseja devolver seu guarda-chuva?')) {
+                return;
+            }
+
+            try {
+                // Ao invés de usar uma retirada_id fixa, vamos buscar a retirada_id do usuário logado que ainda não foi devolvida.
+                // Para isso, faremos uma requisição ao endpoint /api/minhas_retiradas, que deve retornar APENAS
+                // as retiradas ativas (sem devolução correspondente) para o usuário logado.
+                const minhasRetiradasResponse = await fetch('/api/minhas_retiradas');
+                const minhasRetiradasData = await minhasRetiradasResponse.json();
+
+                if (minhasRetiradasResponse.ok && minhasRetiradasData.status === 'success' && minhasRetiradasData.retiradas.length > 0) {
+                    // Pega a primeira retirada ativa do usuário (assumindo que o usuário só pode ter 1 guarda-chuva por vez)
+                    const retiradaAtivaId = minhasRetiradasData.retiradas[0].id;
+                    const codigoGuardaChuvaAtivo = minhasRetiradasData.retiradas[0].codigo_guarda_chuva; // Pode ser útil para o backend
+
                     const response = await fetch('/registrar_devolucao', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        // Você pode enviar qualquer dado necessário para identificar a retirada a ser devolvida
-                        // Por enquanto, não estamos enviando nada, mas o Flask registrará a devolução associada ao usuário logado
-                        body: JSON.stringify({}) 
+                        body: JSON.stringify({ 
+                            retirada_id: retiradaAtivaId,
+                            // Se o backend precisar do código do guarda-chuva para a devolução, inclua-o
+                            codigo: codigoGuardaChuvaAtivo 
+                        })
                     });
 
                     const data = await response.json();
 
                     if (response.ok && data.status === 'success') {
                         showFlashMessage('Guarda-chuva devolvido com sucesso! Agradecemos sua colaboração.', 'info');
-                        guardaChuvaRetiradoEstado = false; // Atualiza o estado
+                        guardaChuvaRetiradoEstado = false; // Atualiza o estado para "não retirado"
                         localStorage.removeItem('guardaChuvaRetirado'); // Remove o estado do localStorage
                         atualizarBotoesGuardaChuva(); // Atualiza a visibilidade dos botões
                     } else {
                         showFlashMessage(`Erro ao registrar devolução: ${data.message || 'Erro desconhecido.'}`, 'error');
                     }
-                } catch (error) {
-                    console.error('Erro na requisição ou no servidor ao devolver:', error);
-                    showFlashMessage(`Ocorreu um erro ao tentar registrar a devolução: ${error.message}`, 'error');
+                } else {
+                    // Se não houver retiradas ativas segundo o backend, mesmo que o frontend pensasse que sim
+                    showFlashMessage('Não há guarda-chuvas ativos para devolver para este usuário.', 'error');
+                    guardaChuvaRetiradoEstado = false; // Força o estado para "não retirado" no frontend
+                    localStorage.removeItem('guardaChuvaRetirado');
+                    atualizarBotoesGuardaChuva();
                 }
+            } catch (error) {
+                console.error('Erro na requisição ou no servidor ao devolver:', error);
+                showFlashMessage(`Ocorreu um erro ao tentar registrar a devolução: ${error.message}`, 'error');
             }
         });
 
@@ -707,7 +738,7 @@
 
                 if (response.ok && data.status === 'success') {
                     showFlashMessage(`Guarda-chuva retirado com sucesso! Código: ${generatedCode}.`, 'message');
-                    guardaChuvaRetiradoEstado = true; // Atualiza o estado
+                    guardaChuvaRetiradoEstado = true; // Atualiza o estado para "retirado"
                     localStorage.setItem('guardaChuvaRetirado', 'true'); // Salva o estado no localStorage
                     atualizarBotoesGuardaChuva(); // Atualiza a visibilidade dos botões
                     umbrellaOverlay.classList.remove('active'); // Fecha o overlay após sucesso
@@ -762,7 +793,7 @@
         });
 
         // Initial state when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             if (window.innerWidth > 768) {
                 sidebar.classList.add('expanded'); // Start expanded on desktop
             } else {
@@ -794,15 +825,36 @@
             L.marker([-23.5623, -46.6475], {icon: umbrellaIcon}).addTo(map)
                 .bindPopup('<b>Ponto de Retirada - Lobo</b><br>Voyagem guarda chuvas');
 
-            L.marker([-23.5839, -46.6403], {icon: umbrellaIcon}).addTo(map)
-                    .bindPopup('<b>Ponto de Retirada - Urso</b><br>Ao Para Água Presentes e Consertos de Guarda-chuvas');
-
-            L.marker([-23.5042, -46.4950], {icon: umbrellaIcon}).addTo(map)
-                .bindPopup('<b>Ponto de Retirada - Águia</b><br>JLV Fabrica de Guarda-Sóis e Ombrelones Personalizados');
-            
-            // Chama a função para atualizar os botões na inicialização
-            atualizarBotoesGuardaChuva();
+            // Chamada inicial para verificar o estado do guarda-chuva do usuário e atualizar os botões
+            await verificarEstadoGuardaChuvaUsuario();
         });
+
+        // Nova função para verificar o estado do guarda-chuva do usuário no backend
+        async function verificarEstadoGuardaChuvaUsuario() {
+            try {
+                const response = await fetch('/api/minhas_retiradas');
+                const result = await response.json();
+
+                if (response.ok && result.status === 'success') {
+                    // Se o usuário tiver pelo menos uma retirada ativa, o estado é "retirado"
+                    guardaChuvaRetiradoEstado = result.retiradas.length > 0;
+                    localStorage.setItem('guardaChuvaRetirado', guardaChuvaRetiradoEstado);
+                } else {
+                    // Em caso de erro ou sem retiradas, assume que não tem guarda-chuva
+                    guardaChuvaRetiradoEstado = false;
+                    localStorage.removeItem('guardaChuvaRetirado');
+                    console.error('Erro ao verificar estado do guarda-chuva:', result.message || 'Erro desconhecido.');
+                }
+            } catch (error) {
+                // Erro de rede, etc. Assume que não tem guarda-chuva para não travar a UI
+                guardaChuvaRetiradoEstado = false;
+                localStorage.removeItem('guardaChuvaRetirado');
+                console.error('Erro de rede ao verificar estado do guarda-chuva:', error);
+            } finally {
+                // Sempre atualiza os botões com base no estado final
+                atualizarBotoesGuardaChuva();
+            }
+        }
     </script>
 </body>
 </html>
