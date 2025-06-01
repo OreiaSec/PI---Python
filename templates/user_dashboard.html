@@ -584,9 +584,8 @@
         const retrievalCodeDisplay = document.getElementById('retrievalCodeDisplay'); // Elemento para exibir o código
         const confirmOkButton = document.getElementById('confirmOkButton'); // Novo botão OK
 
-        // Variável global para controlar o estado do botão do guarda-chuva
-        // Usamos localStorage para persistir o estado entre recarregamentos da página
-        let guardaChuvaRetiradoEstado = localStorage.getItem('guardaChuvaRetirado') === 'true';
+        // Variável global para controlar o estado do botão do guarda-chuva, agora inicializada pelo Flask
+        let guardaChuvaRetiradoEstado = {{ guarda_chuva_retirado_no_backend | tojson }};
 
         function toggleSidebar() {
             sidebar.classList.toggle('expanded');
@@ -612,7 +611,10 @@
         // Função para mostrar mensagens flash personalizadas (simulando Flask flash)
         function showFlashMessage(message, category) {
             const container = document.querySelector('.flash-messages-container');
-            if (!container) return; // Se o container não existir, não faz nada
+            // Remove mensagens existentes antes de adicionar novas
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
 
             const messageDiv = document.createElement('div');
             messageDiv.classList.add(`flash-${category}`);
@@ -649,21 +651,41 @@
 
         // Event listener para o botão "Retirar um guarda-chuva"
         retirarButton.addEventListener('click', () => {
-            // Gera e exibe o código antes de mostrar o overlay
-            const newCode = generateRandomCode(6);
-            retrievalCodeDisplay.textContent = newCode;
-            umbrellaOverlay.classList.add('active');
+            if (!guardaChuvaRetiradoEstado) {
+                // Gera e exibe o código antes de mostrar o overlay
+                const newCode = generateRandomCode(6);
+                retrievalCodeDisplay.textContent = newCode;
+                umbrellaOverlay.classList.add('active');
+            } else {
+                showFlashMessage('Você já retirou um guarda-chuva. Por favor, devolva-o antes de retirar outro.', 'error');
+            }
         });
 
         // Event listener para o botão "Devolver guarda-chuva" (novo)
-        devolverButton.addEventListener('click', () => {
+        devolverButton.addEventListener('click', async () => {
             if (guardaChuvaRetiradoEstado) {
-                // Aqui você pode adicionar lógica para enviar a devolução para o backend,
-                // mas para este requisito, apenas exibiremos uma mensagem.
-                showFlashMessage('Guarda-chuva devolvido com sucesso! Agradecemos sua colaboração.', 'info');
-                guardaChuvaRetiradoEstado = false; // Atualiza o estado
-                localStorage.removeItem('guardaChuvaRetirado'); // Remove o estado do localStorage
-                atualizarBotoesGuardaChuva(); // Atualiza a visibilidade dos botões
+                try {
+                    const response = await fetch('/registrar_devolucao', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({}) // Sem dados específicos para devolução por enquanto
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.status === 'success') {
+                        showFlashMessage('Guarda-chuva devolvido com sucesso! Agradecemos sua colaboração.', 'info');
+                        guardaChuvaRetiradoEstado = false; // Atualiza o estado
+                        atualizarBotoesGuardaChuva(); // Atualiza a visibilidade dos botões
+                    } else {
+                        showFlashMessage(`Erro ao registrar devolução: ${data.message || 'Erro desconhecido.'}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro na requisição ou no servidor:', error);
+                    showFlashMessage(`Ocorreu um erro ao tentar registrar a devolução: ${error.message}`, 'error');
+                }
             }
         });
 
@@ -689,7 +711,6 @@
                 if (response.ok && data.status === 'success') {
                     showFlashMessage(`Guarda-chuva retirado com sucesso! Código: ${generatedCode}.`, 'message');
                     guardaChuvaRetiradoEstado = true; // Atualiza o estado
-                    localStorage.setItem('guardaChuvaRetirado', 'true'); // Salva o estado no localStorage
                     atualizarBotoesGuardaChuva(); // Atualiza a visibilidade dos botões
                     umbrellaOverlay.classList.remove('active'); // Fecha o overlay após sucesso
                 } else {
