@@ -703,8 +703,6 @@ def logout():
     flash('Você foi desconectado.', 'message')
     return redirect(url_for('index'))
 
----
-
 ### Nova Rota para Registrar Retirada de Guarda-Chuva
 
 ```python
