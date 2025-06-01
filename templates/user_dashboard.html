@@ -656,14 +656,33 @@
         });
 
         // Event listener para o botão "Devolver guarda-chuva" (novo)
-        devolverButton.addEventListener('click', () => {
+        devolverButton.addEventListener('click', async () => {
             if (guardaChuvaRetiradoEstado) {
-                // Aqui você pode adicionar lógica para enviar a devolução para o backend,
-                // mas para este requisito, apenas exibiremos uma mensagem.
-                showFlashMessage('Guarda-chuva devolvido com sucesso! Agradecemos sua colaboração.', 'info');
-                guardaChuvaRetiradoEstado = false; // Atualiza o estado
-                localStorage.removeItem('guardaChuvaRetirado'); // Remove o estado do localStorage
-                atualizarBotoesGuardaChuva(); // Atualiza a visibilidade dos botões
+                try {
+                    const response = await fetch('/registrar_devolucao', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        // Você pode enviar qualquer dado necessário para identificar a retirada a ser devolvida
+                        // Por enquanto, não estamos enviando nada, mas o Flask registrará a devolução associada ao usuário logado
+                        body: JSON.stringify({}) 
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.status === 'success') {
+                        showFlashMessage('Guarda-chuva devolvido com sucesso! Agradecemos sua colaboração.', 'info');
+                        guardaChuvaRetiradoEstado = false; // Atualiza o estado
+                        localStorage.removeItem('guardaChuvaRetirado'); // Remove o estado do localStorage
+                        atualizarBotoesGuardaChuva(); // Atualiza a visibilidade dos botões
+                    } else {
+                        showFlashMessage(`Erro ao registrar devolução: ${data.message || 'Erro desconhecido.'}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('Erro na requisição ou no servidor ao devolver:', error);
+                    showFlashMessage(`Ocorreu um erro ao tentar registrar a devolução: ${error.message}`, 'error');
+                }
             }
         });
 
