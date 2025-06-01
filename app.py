@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template, jsonify
+from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template
 import mysql.connector
 from mysql.connector import Error
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -67,7 +67,7 @@ def init_database():
             cursor.execute(create_users_table_query)
             print("Tabela 'users_from_bb' criada ou já existe.")
 
-            # SQL para criar a tabela umbrella_retirada
+            # SQL para criar a tabela umbrella_retirada (adicionei aqui para garantir que seja criada se não estiver)
             create_umbrella_table_query = """
             CREATE TABLE IF NOT EXISTS umbrella_retirada (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -77,14 +77,7 @@ def init_database():
                 codigo_guarda_chuva VARCHAR(6) NOT NULL,
                 data_retirada DATE NOT NULL,
                 hora_retirada TIME NOT NULL,
-                timestamp_retirada DATETIME DEFAULT CURRENT_TIMESTAMP,
-                -- Adicionando campos para devolução
-                data_devolucao DATE NULL,
-                hora_devolucao TIME NULL,
-                timestamp_devolucao DATETIME NULL,
-                -- Adicionando um índice para buscas rápidas por código e status de devolução
-                INDEX idx_codigo_guarda_chuva (codigo_guarda_chuva),
-                INDEX idx_devolucao_status (data_devolucao)
+                timestamp_retirada DATETIME DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
             cursor.execute(create_umbrella_table_query)
@@ -175,36 +168,6 @@ def verificar_login(email, senha):
     except Error as e:
         print(f"Erro ao verificar login: {e}")
         return False, f"Erro no banco de dados: {str(e)}", None, None, None
-    finally:
-        if connection and connection.is_connected():
-            cursor.close()
-            connection.close()
-
-# Função para verificar se o usuário tem um guarda-chuva retirado e não devolvido
-def verificar_guarda_chuva_retirado(user_id):
-    connection = None
-    try:
-        connection = get_db_connection()
-        if not connection:
-            return False, None
-
-        cursor = connection.cursor(dictionary=True)
-        # Verifica se existe algum registro de retirada para o usuário sem data de devolução
-        query = """
-        SELECT codigo_guarda_chuva
-        FROM umbrella_retirada
-        WHERE email = (SELECT email FROM users_from_bb WHERE id = %s) AND data_devolucao IS NULL
-        ORDER BY timestamp_retirada DESC
-        LIMIT 1
-        """
-        cursor.execute(query, (user_id,))
-        result = cursor.fetchone()
-        if result:
-            return True, result['codigo_guarda_chuva']
-        return False, None
-    except Error as e:
-        print(f"Erro ao verificar guarda-chuva retirado: {e}")
-        return False, None
     finally:
         if connection and connection.is_connected():
             cursor.close()
@@ -420,92 +383,6 @@ html_code = """
             border-radius: 5px;
             border: 1px solid #dc3545;
         }
-        /* Estilos para o dashboard */
-        .dashboard-container {
-            background-color: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.3);
-            width: 90%;
-            max-width: 600px;
-            border-radius: 20px;
-            padding: 30px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: white;
-        }
-        .dashboard-container h2 {
-            margin-bottom: 20px;
-        }
-        .dashboard-container .btn-acao {
-            margin-top: 20px;
-            padding: 15px 30px;
-            font-size: 18px;
-            background-color: #28a745; /* Verde para retirar */
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        .dashboard-container .btn-acao:hover {
-            background-color: #218838;
-        }
-        .dashboard-container .btn-devolver {
-            background-color: #ffc107; /* Amarelo para devolver */
-            color: #333;
-        }
-        .dashboard-container .btn-devolver:hover {
-            background-color: #e0a800;
-        }
-        .dashboard-container .logout-btn {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        .dashboard-container .logout-btn:hover {
-            background-color: #c82333;
-        }
-        .message-box {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: bold;
-            display: none; /* Inicia oculto */
-        }
-        .message-box.success {
-            background-color: rgba(40, 167, 69, 0.8);
-            color: white;
-        }
-        .message-box.error {
-            background-color: rgba(220, 53, 69, 0.8);
-            color: white;
-        }
-        .codigo-input-container {
-            margin-top: 15px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
-        .codigo-input {
-            width: 80%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-            text-align: center;
-            margin-bottom: 10px;
-        }
     </style>
 
     <script>
@@ -514,10 +391,7 @@ html_code = """
                 document.querySelector(".loading-screen").style.opacity = 0;
                 setTimeout(() => {
                     document.querySelector(".loading-screen").style.display = "none";
-                    // Only show .container if not on dashboard
-                    if (!window.location.pathname.includes('/dashboard')) {
-                        document.querySelector(".container").style.display = "flex";
-                    }
+                    document.querySelector(".container").style.display = "flex";
                 }, 1000);
             }, 2000);
         };
@@ -604,102 +478,6 @@ html_code = """
                 });
             });
         });
-
-        // --- Lógica para o Dashboard e Guarda-chuva ---
-
-        // Função para mostrar mensagem de sucesso/erro
-        function showMessageBox(message, type) {
-            const messageBox = document.getElementById('messageBox');
-            messageBox.textContent = message;
-            messageBox.className = 'message-box ' + type;
-            messageBox.style.display = 'block';
-            setTimeout(() => {
-                messageBox.style.display = 'none';
-            }, 5000); // Mensagem desaparece após 5 segundos
-        }
-
-        async function acaoGuardaChuva() {
-            const btnAcao = document.getElementById('btnAcaoGuardaChuva');
-            const codigoInputContainer = document.getElementById('codigoInputContainer');
-            const codigoInput = document.getElementById('codigoGuardaChuva');
-            const acaoAtual = btnAcao.dataset.acao; // 'retirar' ou 'devolver'
-
-            if (acaoAtual === 'retirar') {
-                codigoInputContainer.style.display = 'block'; // Mostra o campo de código
-                btnAcao.textContent = 'Confirmar Retirada'; // Muda o texto do botão
-                btnAcao.dataset.acao = 'confirmarRetirada'; // Muda a ação para confirmar
-            } else if (acaoAtual === 'confirmarRetirada') {
-                const codigo = codigoInput.value.trim();
-                if (!codigo) {
-                    showMessageBox('Por favor, digite o código do guarda-chuva.', 'error');
-                    return;
-                }
-
-                try {
-                    const response = await fetch('/registrar_retirada', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ codigo: codigo }),
-                    });
-
-                    const result = await response.json();
-
-                    if (result.status === 'success') {
-                        showMessageBox(result.message, 'success');
-                        btnAcao.textContent = 'Devolver Guarda-chuva'; // Muda o texto do botão
-                        btnAcao.dataset.acao = 'devolver'; // Muda a ação para devolver
-                        btnAcao.classList.remove('btn-acao');
-                        btnAcao.classList.add('btn-devolver');
-                        codigoInputContainer.style.display = 'none'; // Oculta o campo de código
-                        codigoInput.value = ''; // Limpa o campo
-                        // Salva o código do guarda-chuva na sessão JS, se necessário, ou confia no backend para isso
-                        localStorage.setItem('guardaChuvaRetirado', codigo);
-
-                    } else {
-                        showMessageBox(result.message, 'error');
-                    }
-                } catch (error) {
-                    console.error('Erro na requisição de retirada:', error);
-                    showMessageBox('Erro ao registrar retirada. Tente novamente.', 'error');
-                }
-            } else if (acaoAtual === 'devolver') {
-                try {
-                    // Podemos pegar o código do guarda-chuva do localStorage se foi salvo na retirada,
-                    // ou fazer uma requisição ao backend para obter o último guarda-chuva retirado pelo usuário.
-                    // Por simplicidade, vamos assumir que o backend pode lidar com a devolução sem um código específico
-                    // se o usuário só tiver um guarda-chuva retirado.
-                    // Se houver múltiplos guarda-chuvas, o ideal seria pedir o código novamente.
-                    const codigoRetirado = localStorage.getItem('guardaChuvaRetirado'); // Recupera o último código retirado
-
-                    const response = await fetch('/registrar_devolucao', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ codigo: codigoRetirado }), // Envia o código para devolução
-                    });
-
-                    const result = await response.json();
-
-                    if (result.status === 'success') {
-                        showMessageBox(result.message, 'success');
-                        btnAcao.textContent = 'Retirar Guarda-chuva'; // Volta para o texto original
-                        btnAcao.dataset.acao = 'retirar'; // Volta para a ação de retirar
-                        btnAcao.classList.remove('btn-devolver');
-                        btnAcao.classList.add('btn-acao');
-                        localStorage.removeItem('guardaChuvaRetirado'); // Remove da sessão JS
-
-                    } else {
-                        showMessageBox(result.message, 'error');
-                    }
-                } catch (error) {
-                    console.error('Erro na requisição de devolução:', error);
-                    showMessageBox('Erro ao registrar devolução. Tente novamente.', 'error');
-                }
-            }
-        }
     </script>
 </head>
 <body>
@@ -808,48 +586,7 @@ html_code = """
     </form>
 </div>
 
-<div class="dashboard-container" id="dashboardScreen" style="display: none;">
-    <h2>Bem-vindo, {{ user_name }}!</h2>
-    <p>Aqui você pode retirar ou devolver um guarda-chuva.</p>
-
-    <div class="message-box" id="messageBox"></div>
-
-    <div class="codigo-input-container" id="codigoInputContainer" style="display: none;">
-        <input type="text" id="codigoGuardaChuva" class="codigo-input" placeholder="Digite o código do guarda-chuva" maxlength="6">
-    </div>
-
-    <button type="button" id="btnAcaoGuardaChuva" class="btn-acao" data-acao="{{ 'devolver' if guarda_chuva_retirado else 'retirar' }}"
-            onclick="acaoGuardaChuva()">
-        {{ 'Devolver Guarda-chuva' if guarda_chuva_retirado else 'Retirar Guarda-chuva' }}
-    </button>
-    <a href="{{ url_for('logout') }}" class="logout-btn">Sair</a>
-</div>
-
-
 <script>
-// Ajuste para exibir o dashboard se o usuário já estiver logado
-window.addEventListener('load', function() {
-    const dashboardScreen = document.getElementById('dashboardScreen');
-    if (window.location.pathname === '/dashboard' && dashboardScreen) {
-        document.querySelector(".loading-screen").style.opacity = 0;
-        document.querySelector(".loading-screen").style.display = "none";
-        dashboardScreen.style.display = 'flex';
-        // Define o estado inicial do botão com base na variável Flask
-        const btnAcao = document.getElementById('btnAcaoGuardaChuva');
-        if ('{{ guarda_chuva_retirado }}' === 'True') {
-            btnAcao.dataset.acao = 'devolver';
-            btnAcao.classList.remove('btn-acao');
-            btnAcao.classList.add('btn-devolver');
-            localStorage.setItem('guardaChuvaRetirado', '{{ guarda_chuva_codigo_retirado }}'); // Salva o código na JS
-        } else {
-            btnAcao.dataset.acao = 'retirar';
-            btnAcao.classList.remove('btn-devolver');
-            btnAcao.classList.add('btn-acao');
-            localStorage.removeItem('guardaChuvaRetirado');
-        }
-    }
-});
-
 console.log("Bubble SA App iniciado - Render Deploy Ready");
 </script>
 
@@ -941,23 +678,12 @@ def login():
 
 @app.route('/dashboard')
 def dashboard():
-    if 'user_id' in session: # Usar user_id para verificar se o usuário está logado
-        user_name = session['user_name']
-        user_id = session['user_id']
-        
-        # Verifica se o usuário tem um guarda-chuva retirado
-        guarda_chuva_retirado, codigo_retirado = verificar_guarda_chuva_retirado(user_id)
-        
-        # Agora, a variável 'guarda_chuva_retirado' e 'guarda_chuva_codigo_retirado'
-        # serão passadas para o template HTML, controlando o estado do botão.
-        return render_template_string(html_code, 
-                                      user_name=user_name, 
-                                      guarda_chuva_retirado='True' if guarda_chuva_retirado else 'False',
-                                      guarda_chuva_codigo_retirado=codigo_retirado if codigo_retirado else '')
+    if 'user_name' in session:
+        # A template 'user_dashboard.html' precisa estar na pasta 'templates'
+        return render_template('user_dashboard.html', user_name=session['user_name'])
     else:
         flash('Você precisa fazer login para acessar esta página.', 'error')
         return redirect(url_for('index'))
-
 
 @app.route('/logout')
 def logout():
@@ -968,28 +694,30 @@ def logout():
     flash('Você foi desconectado.', 'message')
     return redirect(url_for('index'))
 
-# --- ROTA PARA REGISTRAR RETIRADA DE GUARDA-CHUVA ---
+# --- NOVA ROTA PARA REGISTRAR RETIRADA DE GUARDA-CHUVA ---
 @app.route('/registrar_retirada', methods=['POST'])
 def registrar_retirada():
     # Verifica se o usuário está logado
     if 'user_id' not in session:
-        return jsonify({'status': 'error', 'message': 'Não autenticado. Faça login para registrar a retirada.'}), 401
+        return {'status': 'error', 'message': 'Não autenticado. Faça login para registrar a retirada.'}, 401
     
     # Pega o código do guarda-chuva enviado pelo JavaScript
     data = request.get_json()
     codigo_guarda_chuva = data.get('codigo')
 
     if not codigo_guarda_chuva:
-        return jsonify({'status': 'error', 'message': 'Código do guarda-chuva não fornecido.'}), 400
+        return {'status': 'error', 'message': 'Código do guarda-chuva não fornecido.'}, 400
 
     # Pega os dados do usuário da sessão (garantindo que foram salvos no login)
-    nome_usuario = session.get('user_name') 
+    nome_usuario = session.get('user_name') # Seu campo 'nome' no banco
     email = session.get('email')
     telefone = session.get('phone')
 
     # Validação dos dados da sessão (devem existir)
     if not all([nome_usuario, email, telefone]):
-        return jsonify({'status': 'error', 'message': 'Dados do usuário (nome, email, telefone) não encontrados na sessão. Por favor, faça login novamente.'}), 400
+        # Isso indica um problema na forma como os dados da sessão são populados no login.
+        # O usuário pode ter logado, mas as informações essenciais não estão na sessão.
+        return {'status': 'error', 'message': 'Dados do usuário (nome, email, telefone) não encontrados na sessão. Por favor, faça login novamente.'}, 400
 
     # Obtém data e hora atuais
     data_retirada = datetime.now().strftime('%Y-%m-%d')
@@ -999,19 +727,10 @@ def registrar_retirada():
     try:
         connection = get_db_connection()
         if not connection:
-            return jsonify({'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}), 500
+            return {'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}, 500
         
         cursor = connection.cursor()
         
-        # Verificar se o mesmo guarda-chuva não está atualmente em posse de alguém (data_devolucao IS NULL)
-        check_umbrella_query = """
-        SELECT id FROM umbrella_retirada
-        WHERE codigo_guarda_chuva = %s AND data_devolucao IS NULL
-        """
-        cursor.execute(check_umbrella_query, (codigo_guarda_chuva,))
-        if cursor.fetchone():
-            return jsonify({'status': 'error', 'message': 'Este guarda-chuva já está retirado por alguém.'}), 409 # Conflict
-
         insert_query = """
         INSERT INTO umbrella_retirada (nome_usuario, email, telefone, codigo_guarda_chuva, data_retirada, hora_retirada)
         VALUES (%s, %s, %s, %s, %s, %s)
@@ -1022,84 +741,14 @@ def registrar_retirada():
         connection.commit() # Commit a transação
 
         print(f"Retirada registrada: Usuário '{nome_usuario}', Código: '{codigo_guarda_chuva}'")
-        return jsonify({'status': 'success', 'message': 'Guarda-chuva retirado com sucesso!'})
+        return {'status': 'success', 'message': 'Retirada registrada com sucesso!'}
 
     except Error as e:
         print(f"Erro ao inserir retirada no MySQL: {e}")
+        # Rollback em caso de erro para garantir a integridade
         if connection:
             connection.rollback()
-        return jsonify({'status': 'error', 'message': f'Erro no servidor ao registrar retirada: {str(e)}'}), 500
-    finally:
-        if connection and connection.is_connected():
-            cursor.close()
-            connection.close()
-
-# --- NOVA ROTA PARA REGISTRAR DEVOLUÇÃO DE GUARDA-CHUVA ---
-@app.route('/registrar_devolucao', methods=['POST'])
-def registrar_devolucao():
-    # Verifica se o usuário está logado
-    if 'user_id' not in session:
-        return jsonify({'status': 'error', 'message': 'Não autenticado. Faça login para registrar a devolução.'}), 401
-    
-    # Pega o código do guarda-chuva enviado pelo JavaScript (opcional, mas bom para especificidade)
-    data = request.get_json()
-    codigo_guarda_chuva = data.get('codigo')
-
-    nome_usuario_email = session.get('email') # Usar email para buscar o registro correto
-
-    connection = None
-    try:
-        connection = get_db_connection()
-        if not connection:
-            return jsonify({'status': 'error', 'message': 'Erro de conexão com o banco de dados.'}), 500
-        
-        cursor = connection.cursor()
-        
-        # Encontra o último registro de retirada para este usuário que ainda não foi devolvido
-        # Prioriza o código se fornecido
-        if codigo_guarda_chuva:
-            select_query = """
-            SELECT id FROM umbrella_retirada
-            WHERE email = %s AND codigo_guarda_chuva = %s AND data_devolucao IS NULL
-            ORDER BY timestamp_retirada DESC LIMIT 1
-            """
-            cursor.execute(select_query, (nome_usuario_email, codigo_guarda_chuva))
-        else:
-            select_query = """
-            SELECT id FROM umbrella_retirada
-            WHERE email = %s AND data_devolucao IS NULL
-            ORDER BY timestamp_retirada DESC LIMIT 1
-            """
-            cursor.execute(select_query, (nome_usuario_email,))
-
-        umbrella_record = cursor.fetchone()
-
-        if not umbrella_record:
-            return jsonify({'status': 'error', 'message': 'Nenhum guarda-chuva retirado para este usuário ou código inválido.'}), 404
-
-        record_id = umbrella_record[0] # Pega o ID do registro
-
-        # Atualiza o registro com a data e hora de devolução
-        data_devolucao = datetime.now().strftime('%Y-%m-%d')
-        hora_devolucao = datetime.now().strftime('%H:%M:%S')
-        timestamp_devolucao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        update_query = """
-        UPDATE umbrella_retirada
-        SET data_devolucao = %s, hora_devolucao = %s, timestamp_devolucao = %s
-        WHERE id = %s
-        """
-        cursor.execute(update_query, (data_devolucao, hora_devolucao, timestamp_devolucao, record_id))
-        connection.commit()
-
-        print(f"Devolução registrada para o usuário '{nome_usuario_email}', ID do registro: {record_id}")
-        return jsonify({'status': 'success', 'message': 'Guarda-chuva devolvido com sucesso! Obrigado!'})
-
-    except Error as e:
-        print(f"Erro ao registrar devolução no MySQL: {e}")
-        if connection:
-            connection.rollback()
-        return jsonify({'status': 'error', 'message': f'Erro no servidor ao registrar devolução: {str(e)}'}), 500
+        return {'status': 'error', 'message': f'Erro no servidor ao registrar retirada: {str(e)}'}, 500
     finally:
         if connection and connection.is_connected():
             cursor.close()
@@ -1111,4 +760,4 @@ with app.app_context():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False) # (esse esta na pasta app.py)
+    app.run(host='0.0.0.0', port=port, debug=False)
