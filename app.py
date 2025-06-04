@@ -484,7 +484,7 @@ html_code = """
 
 <div class="loading-screen">
     <img src="https://i.postimg.cc/26VcMNnf/Bubble-SA-PNG.png" alt="Logo Bubble SA" class="umbrella-img">
-    <p>Conectando ao Render...</p>
+    <p>Carregando...</p>
 </div>
 
 <div class="container">
