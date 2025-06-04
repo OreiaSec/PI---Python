@@ -193,12 +193,12 @@ html_code = """
             background-size: cover;
             background-position: center;
             background-repeat: repeat;
-            display: flex; /* Tornar o body um container flexível */
-            align-items: center; /* Centralizar verticalmente o item filho */
-            justify-content: center; /* Centralizar horizontalmente o item filho */
-            min-height: 100vh; /* Garantir que o body ocupa a altura total da viewport */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
         }
-        .loading-screen { /* Manter fixed para a tela de carregamento */
+        .loading-screen, .container, .tela1, .tela2, .success-screen {
             position: fixed;
             top: 0;
             left: 0;
@@ -213,8 +213,6 @@ html_code = """
             transition: opacity 1s ease-in-out;
             z-index: 10;
         }
-
-        /* Corrigido: Removido position: fixed, top, left, width: 100%, height: 100% dos containers de formulário */
         .container, .tela1, .tela2, .success-screen {
             background-color: rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(10px);
@@ -223,13 +221,7 @@ html_code = """
             max-width: 450px;
             border-radius: 20px;
             padding: 30px 20px;
-            display: flex; /* Manter para alinhar os itens internos (inputs, botões) */
-            flex-direction: column; /* Manter para alinhar os itens internos */
-            align-items: center; /* Manter para alinhar os itens internos */
-            justify-content: center; /* Manter para alinhar os itens internos */
-            text-align: center; /* Adicionei ou mantive para centralizar texto dentro do container */
-            z-index: 5; /* Pode diminuir o z-index já que não está fixed cobrindo tudo */
-            /* display: none; */ /* Será controlado pelo JavaScript */
+            display: none;
         }
         .umbrella-img {
             width: auto;
@@ -240,8 +232,8 @@ html_code = """
             margin-bottom: 10px;
             opacity: 0;
             animation: fadeIn 1.5s ease forwards,
-                       float 3s ease-in-out infinite,
-                       pulse 1s ease-in-out infinite;
+                        float 3s ease-in-out infinite,
+                        pulse 1s ease-in-out infinite;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.5); }
