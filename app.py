@@ -9,7 +9,7 @@ from datetime import datetime, date, timedelta
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'sua_chave_secreta_super_segura_aqui')
 
-# Configurações do banco de dados MySQL
+# Configurações do banco de dados MySQL - usando variáveis de ambiente para segurança
 DB_CONFIG = {
     'host': os.environ.get('DB_HOST'),
     'port': int(os.environ.get('DB_PORT', 3306)),
@@ -23,8 +23,8 @@ DB_CONFIG = {
     'raise_on_warnings': True
 }
 
-# Início da conexão com o banco de dados
 def get_db_connection():
+    """Estabelece conexão com o banco de dados MySQL com retry"""
     max_retries = 3
     retry_count = 0
 
@@ -42,8 +42,9 @@ def get_db_connection():
                 return None
     return None
 
-# Início da inicialização do banco de dados
 def init_database():
+    """Cria as tabelas de usuários, retirada e devolução se não existirem.
+       Assume que qualquer ALTER TABLE necessário para colunas como user_id e ativo já foi feito manualmente."""
     connection = None
     cursor = None
     try:
@@ -51,7 +52,7 @@ def init_database():
         if connection:
             cursor = connection.cursor()
 
-            # Tabela users_from_bb
+            # 1. Criar tabela users_from_bb (se não existir)
             create_users_table_query = """
             CREATE TABLE IF NOT EXISTS users_from_bb (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -69,7 +70,7 @@ def init_database():
             cursor.execute(create_users_table_query)
             print("Tabela 'users_from_bb' criada ou já existe.")
 
-            # Tabela umbrella_retirada
+            # 2. Criar tabela umbrella_retirada (se não existir, com as colunas finais esperadas e FK)
             create_umbrella_retirada_table_query = """
             CREATE TABLE IF NOT EXISTS umbrella_retirada (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -86,9 +87,9 @@ def init_database():
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
             cursor.execute(create_umbrella_retirada_table_query)
-            print("Tabela 'umbrella_retirada' criada ou já existe (com colunas user_id e ativo).")
+            print("Tabela 'umbrella_retirada' criada ou já existe (com colunas user_id, ativo e FK).")
 
-            # Tabela umbrella_devolucao
+            # 3. Criar tabela umbrella_devolucao (se não existir)
             create_umbrella_devolucao_table_query = """
             CREATE TABLE IF NOT EXISTS umbrella_devolucao (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -113,16 +114,17 @@ def init_database():
         if connection and connection.is_connected():
             connection.close()
 
-# Início das funções de validação
 def validar_cpf(cpf):
+    """Valida se o CPF tem 11 dígitos"""
     return re.match(r'^\d{11}$', cpf) is not None
 
 def validar_email(email):
+    """Valida formato do email"""
     pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(pattern, email) is not None
 
-# Início das funções de usuário
 def inserir_usuario(nome, cpf, pais, email, telefone, senha):
+    """Insere um novo usuário no banco de dados"""
     connection = None
     try:
         connection = get_db_connection()
@@ -131,6 +133,7 @@ def inserir_usuario(nome, cpf, pais, email, telefone, senha):
 
         cursor = connection.cursor()
 
+        # Verificar se CPF ou email já existem
         check_query = "SELECT id FROM users_from_bb WHERE cpf = %s OR email = %s"
         cursor.execute(check_query, (cpf, email))
         existing_user = cursor.fetchone()
@@ -138,8 +141,10 @@ def inserir_usuario(nome, cpf, pais, email, telefone, senha):
         if existing_user:
             return False, "CPF ou email já cadastrados!"
 
+        # Hash da senha para segurança
         senha_hash = generate_password_hash(senha)
 
+        # Inserir novo usuário
         insert_query = """
         INSERT INTO users_from_bb (nome, cpf, pais, email, telefone, senha)
         VALUES (%s, %s, %s, %s, %s, %s)
@@ -160,6 +165,7 @@ def inserir_usuario(nome, cpf, pais, email, telefone, senha):
             connection.close()
 
 def verificar_login(email, senha):
+    """Verifica as credenciais de login e retorna dados do usuário"""
     connection = None
     try:
         connection = get_db_connection()
@@ -168,12 +174,14 @@ def verificar_login(email, senha):
         
         cursor = connection.cursor(dictionary=True)
 
+        # Selecionar nome, email, telefone, CPF e ID
         query = "SELECT id, nome, email, telefone, cpf, senha FROM users_from_bb WHERE email = %s"
         cursor.execute(query, (email,))
         user = cursor.fetchone()
 
         if user and check_password_hash(user['senha'], senha):
             print(f"Login realizado: {user['nome']} - {user['email']}")
+            # Retorna sucesso, nome, email, telefone, CPF e ID
             return True, user['nome'], user['email'], user['telefone'], user['cpf'], user['id']
         else:
             return False, "Email ou senha incorretos!", None, None, None, None
@@ -186,7 +194,7 @@ def verificar_login(email, senha):
             cursor.close()
             connection.close()
 
-# Início do código HTML da tela de login
+# Código HTML da tela de login (mantido o que você gostou)
 html_code_for_index_page = """
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -196,11 +204,13 @@ html_code_for_index_page = """
     <title>Bubble Support - Login Técnico</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <style>
+        /* Variáveis CSS */
         :root {
             --primary-color: #007BFF;
             --main-bg-image: url('https://static8.depositphotos.com/1020804/816/i/450/depositphotos_8166031-stock-photo-abstract-background-night-sky-after.jpg');
         }
 
+        /* Estilos base do corpo, adaptados para a tela de login */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
@@ -210,27 +220,28 @@ html_code_for_index_page = """
             background-position: center;
             background-repeat: repeat;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            justify-content: center; /* Centraliza horizontalmente */
+            align-items: center; /* Centraliza verticalmente */
+            min-height: 100vh; /* Garante que ocupe a altura total da viewport */
             color: #333;
-            overflow: hidden;
+            overflow: hidden; /* Evita rolagem desnecessária no body principal */
         }
 
+        /* Container principal do formulário */
         .container {
-            background-color: rgba(255, 255, 255, 0.95);
+            background-color: rgba(255, 255, 255, 0.95); /* Fundo semi-transparente */
             padding: 40px;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             text-align: center;
             width: 100%;
-            max-width: 450px;
-            box-sizing: border-box;
-            position: relative;
+            max-width: 450px; /* Largura máxima para o formulário */
+            box-sizing: border-box; /* Inclui padding e borda na largura */
+            position: relative; /* Para posicionamento das mensagens flash */
             animation: fadeIn 0.8s ease-out;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding-right: 20px;
+            max-height: 90vh; /* Limita a altura do container */
+            overflow-y: auto; /* Permite rolagem vertical se o conteúdo for muito grande */
+            padding-right: 20px; /* Adiciona padding para barra de rolagem */
         }
 
         @keyframes fadeIn {
@@ -252,6 +263,7 @@ html_code_for_index_page = """
             font-size: 1.1em;
         }
 
+        /* Tabs de Login/Cadastro */
         .tabs {
             display: flex;
             margin-bottom: 30px;
@@ -280,18 +292,21 @@ html_code_for_index_page = """
             color: #444;
         }
 
+        /* Estilos dos campos de formulário */
         .input-group {
             position: relative;
             margin-bottom: 25px;
-            text-align: left;
+            text-align: left; /* Alinha labels e ícones à esquerda */
         }
 
         .input-group i {
             position: absolute;
             left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            line-height: 1;
+            /* AJUSTE PARA O ALINHAMENTO VERTICAL DOS ÍCONES */
+            top: 50%; /* Mantém o ícone centralizado verticalmente */
+            transform: translateY(-50%); /* Ajusta a posição exata baseada na sua própria altura */
+            line-height: 1; /* Garante que a altura da linha não afete o alinhamento */
+            /* FIM DO AJUSTE */
             color: #888;
             font-size: 1.1em;
         }
@@ -305,17 +320,17 @@ html_code_for_index_page = """
         }
 
         .input-group input,
-        .input-group select {
-            width: calc(100% - 60px);
-            padding: 14px 15px 14px 40px;
+        .input-group select { /* Adicionado 'select' aqui para aplicar o mesmo estilo */
+            width: calc(100% - 60px); /* Ajusta largura para acomodar padding e ícone */
+            padding: 14px 15px 14px 40px; /* Mantido 40px para alinhar texto ao ícone */
             border: 1px solid #ccc;
             border-radius: 8px;
             font-size: 1em;
             color: #333;
             background-color: #f8f8f8;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
-            box-sizing: border-box;
-            height: 44px;
+            box-sizing: border-box; /* Garante que padding e borda não aumentem a largura total */
+            height: 44px; /* Altura fixa para inputs e selects para ajudar no alinhamento dos ícones */
         }
 
         .input-group input:focus,
@@ -325,6 +340,7 @@ html_code_for_index_page = """
             outline: none;
         }
 
+        /* Botões */
         .btn-submit {
             width: 100%;
             padding: 15px;
@@ -363,12 +379,13 @@ html_code_for_index_page = """
             color: #0056b3;
         }
 
+        /* Flash Messages */
         .flash-messages-container {
             width: 100%;
-            max-width: 450px;
+            max-width: 450px; /* Alinha com a largura do container principal */
             margin-bottom: 20px;
-            position: absolute;
-            top: -70px;
+            position: absolute; /* Posiciona absolutamente dentro do container */
+            top: -70px; /* Ajuste conforme necessário para ficar acima do container */
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
@@ -382,14 +399,14 @@ html_code_for_index_page = """
             font-weight: bold;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: center; /* Centraliza o conteúdo da mensagem */
             gap: 10px;
-            opacity: 1;
-            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            opacity: 1; /* Começa visível */
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out; /* Transição para fade out */
         }
         .flash-message.hide, .flash-error.hide {
             opacity: 0;
-            transform: translateY(-20px);
+            transform: translateY(-20px); /* Move para cima enquanto some */
         }
 
         .flash-message {
@@ -462,12 +479,12 @@ html_code_for_index_page = """
             <input type="text" id="nomeTecnico" name="nome" placeholder="Seu Nome Completo" required>
         </div>
         <div class="input-group">
-            <i class="fas fa-id-card"></i>
+            <i class="fas fa-id-card"></i> {# Novo ícone para CPF #}
             <label for="cpfCadastro">CPF (apenas números):</label>
             <input type="text" id="cpfCadastro" name="cpf" placeholder="Apenas 11 dígitos" required pattern="[0-9]{11}" maxlength="11">
         </div>
         <div class="input-group">
-            <i class="fas fa-globe"></i>
+            <i class="fas fa-globe"></i> {# Novo ícone para País #}
             <label for="paisCadastro">País:</label>
             <select name="pais" id="paisCadastro" required>
                 <option value="">Selecione seu país</option>
@@ -479,7 +496,7 @@ html_code_for_index_page = """
             </select>
         </div>
         <div class="input-group">
-            <i class="fas fa-phone"></i>
+            <i class="fas fa-phone"></i> {# Novo ícone para Telefone #}
             <label for="telefoneCadastro">Telefone:</label>
             <input type="text" id="telefoneCadastro" name="telefone" placeholder="Com DDD" required>
         </div>
@@ -522,7 +539,7 @@ html_code_for_index_page = """
         if (flashMessagesContainer) flashMessagesContainer.innerHTML = '';
     });
 
-    // Função para exibir mensagem de flash
+    // Função para exibir mensagem de flash (simulada, pois o Flask já faz isso)
     function showFlashMessage(message, category) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `flash-${category}`;
@@ -548,7 +565,7 @@ html_code_for_index_page = """
         const formData = new FormData(loginForm);
         const data = Object.fromEntries(formData.entries());
 
-        fetch('/login', {
+        fetch('/login', { // Rota de login
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -556,6 +573,7 @@ html_code_for_index_page = """
             body: new URLSearchParams(data).toString(),
         })
         .then(response => {
+            // Se a resposta não for OK (e.g., 400, 401), lê como JSON para pegar a mensagem de erro
             if (!response.ok) {
                 return response.json().then(err => { throw err; });
             }
@@ -565,13 +583,15 @@ html_code_for_index_page = """
             if (result.success && result.redirect) {
                 window.location.href = result.redirect;
             } else {
+                // Se o Flask retornar success: false, a mensagem de erro já virá no flash.
+                // Mas aqui podemos adicionar um log para depuração.
                 console.error("Erro no login:", result.message);
-                showFlashMessage(result.message || "Erro no login.", "error");
+                showFlashMessage(result.message || "Erro no login.", "error"); // Exibir mensagem de erro
             }
         })
         .catch(error => {
             console.error('Erro na requisição ou no servidor:', error);
-            showFlashMessage(error.message || "Requisição falhou. Tente novamente.", "error");
+            showFlashMessage(error.message || "Requisição falhou. Tente novamente.", "error"); // Exibir erro de requisição
         });
     });
 
@@ -582,7 +602,7 @@ html_code_for_index_page = """
         const formData = new FormData(cadastroTecnicoForm);
         const data = Object.fromEntries(formData.entries());
 
-        fetch('/cadastrar', {
+        fetch('/cadastrar', { // Rota de cadastro
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -597,18 +617,19 @@ html_code_for_index_page = """
         })
         .then(result => {
             if (result.success && result.redirect) {
-                window.location.href = result.redirect;
+                window.location.href = result.redirect; // Redireciona para a nova tela
             } else {
                 console.error("Erro no cadastro:", result.message);
-                showFlashMessage(result.message || "Erro no cadastro.", "error");
+                showFlashMessage(result.message || "Erro no cadastro.", "error"); // Exibir mensagem de erro
             }
         })
         .catch(error => {
             console.error('Erro na requisição ou no servidor:', error);
-            showFlashMessage(error.message || "Requisição falhou. Tente novamente.", "error");
+            showFlashMessage(error.message || "Requisição falhou. Tente novamente.", "error"); // Exibir erro de requisição
         });
     });
 
+    // Faz as mensagens de flash sumirem automaticamente
     document.addEventListener('DOMContentLoaded', function() {
         if (flashMessagesContainer) {
             const messages = flashMessagesContainer.querySelectorAll('.flash-message, .flash-error');
@@ -628,15 +649,16 @@ html_code_for_index_page = """
 </html>
 """
 
-# Início das rotas da aplicação
 @app.route('/')
 def index():
+    # Verifica se o usuário já está logado
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     return render_template_string(html_code_for_index_page)
 
 @app.route('/health')
 def health_check():
+    """Health check endpoint para o Render"""
     try:
         connection = get_db_connection()
         if connection:
@@ -699,18 +721,19 @@ def login():
         session['user_name'] = user_name
         session['email'] = user_email
         session['phone'] = user_phone
-        session['cpf'] = user_cpf
+        session['cpf'] = user_cpf # Salva o CPF na sessão
         flash(f'Bem-vindo de volta, {user_name}!', 'message')
         return jsonify({"success": True, "message": f'Bem-vindo de volta, {user_name}!', "redirect": url_for('dashboard')})
     else:
-        flash(user_name, 'error')
+        flash(user_name, 'error') # user_name aqui conterá a mensagem de erro
         return jsonify({"success": False, "message": user_name})
 
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' in session:
         user_id = session['user_id']
-        has_umbrella = check_user_has_umbrella(user_id)
+        has_umbrella = check_user_has_umbrella(user_id) # Verifica se o usuário tem guarda-chuva retirado
+        # Renderiza 'user_dashboard.html' e passa a variável has_umbrella
         return render_template('user_dashboard.html', user_name=session['user_name'], has_umbrella=has_umbrella)
     else:
         flash('Você precisa fazer login para acessar esta página.', 'error')
@@ -722,20 +745,23 @@ def logout():
     session.pop('user_name', None)
     session.pop('email', None)
     session.pop('phone', None)
-    session.pop('cpf', None)
+    session.pop('cpf', None) # Remove CPF da sessão
     flash('Você foi desconectado.', 'message')
     return redirect(url_for('index'))
 
-# Funções auxiliares para Guarda-Chuva
+# --- Funções Auxiliares para Guarda-Chuva ---
+
 def check_user_has_umbrella(user_id):
+    """Verifica se o usuário tem um guarda-chuva ativo (não devolvido)"""
     connection = None
     try:
         connection = get_db_connection()
         if not connection:
             print("Erro de conexão ao verificar guarda-chuva do usuário.")
-            return False
+            return False # Assume que não tem se não consegue conectar
         
         cursor = connection.cursor(dictionary=True)
+        # Verifica se há alguma retirada ativa para o user_id
         query = "SELECT id FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE ORDER BY timestamp_retirada DESC LIMIT 1"
         cursor.execute(query, (user_id,))
         result = cursor.fetchone()
@@ -748,7 +774,7 @@ def check_user_has_umbrella(user_id):
             cursor.close()
             connection.close()
 
-# Rota para registrar retirada de guarda-chuva
+# --- ROTA PARA REGISTRAR RETIRADA DE GUARDA-CHUVA ---
 @app.route('/registrar_retirada', methods=['POST'])
 def registrar_retirada():
     if 'user_id' not in session:
@@ -756,6 +782,7 @@ def registrar_retirada():
     
     user_id = session['user_id']
     
+    # Primeiro, verifica se o usuário já tem um guarda-chuva ativo
     if check_user_has_umbrella(user_id):
         return jsonify({'status': 'error', 'message': 'Você já tem um guarda-chuva retirado. Por favor, devolva-o antes de retirar outro.'}), 400
 
@@ -805,14 +832,14 @@ def registrar_retirada():
             cursor.close()
             connection.close()
 
-# Rota para registrar devolução de guarda-chuva
+# --- ROTA PARA REGISTRAR DEVOLUÇÃO DE GUARDA-CHUVA ---
 @app.route('/registrar_devolucao', methods=['POST'])
 def registrar_devolucao():
     if 'user_id' not in session:
         return jsonify({'status': 'error', 'message': 'Não autenticado. Faça login para registrar a devolução.'}), 401
     
     user_id = session['user_id']
-    user_cpf = session.get('cpf')
+    user_cpf = session.get('cpf') # Pega o CPF da sessão para registrar na devolução
 
     if not user_cpf:
         return jsonify({'status': 'error', 'message': 'CPF do usuário não encontrado na sessão.'}), 400
@@ -825,6 +852,8 @@ def registrar_devolucao():
         
         cursor = connection.cursor(dictionary=True)
 
+        # 1. Encontrar a última retirada ativa do usuário
+        # Use user_id para filtrar e garantir que a retirada pertence ao usuário logado
         query_ultima_retirada = "SELECT id, codigo_guarda_chuva FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE ORDER BY timestamp_retirada DESC LIMIT 1"
         cursor.execute(query_ultima_retirada, (user_id,))
         ultima_retirada = cursor.fetchone()
@@ -832,9 +861,11 @@ def registrar_devolucao():
         if not ultima_retirada:
             return jsonify({'status': 'error', 'message': 'Nenhum guarda-chuva ativo para este usuário. Não há o que devolver.'}), 400
         
+        # CORREÇÃO: Troca 'ultima_retima' por 'ultima_retirada'
         retirada_id = ultima_retirada['id'] 
         codigo_guarda_chuva = ultima_retirada['codigo_guarda_chuva']
 
+        # 2. Registrar a devolução
         data_devolucao = datetime.now().strftime('%Y-%m-%d')
         hora_devolucao = datetime.now().strftime('%H:%M:%S')
 
@@ -845,6 +876,7 @@ def registrar_devolucao():
         values_devolucao = (retirada_id, data_devolucao, hora_devolucao, user_cpf)
         cursor.execute(insert_devolucao_query, values_devolucao)
 
+        # 3. Atualizar o status 'ativo' da retirada para FALSE
         update_retirada_query = "UPDATE umbrella_retirada SET ativo = FALSE WHERE id = %s"
         cursor.execute(update_retirada_query, (retirada_id,))
         
@@ -863,10 +895,12 @@ def registrar_devolucao():
             cursor.close()
             connection.close()
 
-# Rota para verificar o status do guarda-chuva
+# Rota para verificar o status do guarda-chuva do cliente
 @app.route('/check_umbrella_status', methods=['GET'])
 def check_umbrella_status():
     if 'user_id' not in session:
+        # Se não estiver autenticado, não pode ter guarda-chuva ativo.
+        # Retorna 401 para o frontend lidar com redirecionamento para login
         return jsonify({'status': 'error', 'message': 'Não autenticado.'}), 401
     
     user_id = session['user_id']
@@ -875,7 +909,7 @@ def check_umbrella_status():
 
 
 with app.app_context():
-    init_database()
+    init_database() # Garante que as tabelas são criadas ao iniciar a aplicação
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
