@@ -239,7 +239,6 @@ html_code_for_index_page = """
             box-sizing: border-box; /* Inclui padding e borda na largura */
             position: relative; /* Para posicionamento das mensagens flash */
             animation: fadeIn 0.8s ease-out;
-            /* ADICIONADO: Restringe a altura e permite rolagem */
             max-height: 90vh; /* Limita a altura do container */
             overflow-y: auto; /* Permite rolagem vertical se o conteúdo for muito grande */
             padding-right: 20px; /* Adiciona padding para barra de rolagem */
@@ -303,8 +302,11 @@ html_code_for_index_page = """
         .input-group i {
             position: absolute;
             left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
+            /* AJUSTE PARA O ALINHAMENTO VERTICAL DOS ÍCONES */
+            top: 50%; /* Mantém o ícone centralizado verticalmente */
+            transform: translateY(-50%); /* Ajusta a posição exata baseada na sua própria altura */
+            line-height: 1; /* Garante que a altura da linha não afete o alinhamento */
+            /* FIM DO AJUSTE */
             color: #888;
             font-size: 1.1em;
         }
@@ -320,7 +322,7 @@ html_code_for_index_page = """
         .input-group input,
         .input-group select { /* Adicionado 'select' aqui para aplicar o mesmo estilo */
             width: calc(100% - 60px); /* Ajusta largura para acomodar padding e ícone */
-            padding: 14px 15px 14px 40px; /* Alterado de 50px para 40px para alinhar melhor */
+            padding: 14px 15px 14px 40px; /* Mantido 40px para alinhar texto ao ícone */
             border: 1px solid #ccc;
             border-radius: 8px;
             font-size: 1em;
@@ -328,6 +330,7 @@ html_code_for_index_page = """
             background-color: #f8f8f8;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
             box-sizing: border-box; /* Garante que padding e borda não aumentem a largura total */
+            height: 44px; /* Altura fixa para inputs e selects para ajudar no alinhamento dos ícones */
         }
 
         .input-group input:focus,
