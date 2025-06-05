@@ -260,20 +260,27 @@
         .main-content .action-button {
             padding: 15px 30px;
             border: none;
-            background-color: #28a745;
+            background-color: #28a745; /* Cor padrão para retirar (verde) */
             color: white;
             border-radius: 10px;
             cursor: pointer;
             font-size: 1.1em;
             transition: background-color 0.3s ease, transform 0.2s ease;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            text-decoration: none; /* Para ser usado como link/botão */
-            margin-top: 20px; /* Adicionado para espaçamento se você mantiver */
+            text-decoration: none;
+            margin-top: 20px;
+        }
+
+        .main-content .action-button.return-button { /* Nova classe para o botão de devolver */
+            background-color: #dc3545; /* Cor para devolver (vermelho) */
         }
 
         .main-content .action-button:hover {
             background-color: #218838;
             transform: translateY(-3px);
+        }
+        .main-content .action-button.return-button:hover {
+            background-color: #c82333;
         }
 
         /* Flash Messages */
@@ -281,6 +288,12 @@
             width: 100%;
             max-width: 600px;
             margin-bottom: 20px;
+            position: fixed; /* Fixa as mensagens no topo */
+            top: 20px; /* Ajuste para não colidir com o header */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1002; /* Acima do overlay se necessário */
+            text-align: center;
         }
         .flash-message, .flash-error {
             padding: 10px 15px;
@@ -289,7 +302,14 @@
             font-weight: bold;
             display: flex;
             align-items: center;
+            justify-content: center; /* Centraliza o conteúdo da mensagem */
             gap: 10px;
+            opacity: 1; /* Começa visível */
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out; /* Transição para fade out */
+        }
+        .flash-message.hide, .flash-error.hide {
+            opacity: 0;
+            transform: translateY(-20px); /* Move para cima enquanto some */
         }
         .flash-message {
             background-color: rgba(40, 167, 69, 0.1);
@@ -316,7 +336,7 @@
             background-color: #333; /* Cor de fundo enquanto o mapa carrega */
         }
 
-        /* Overlay para o popup de retirada de guarda-chuva */
+        /* Overlay para o popup de retirada/devolução de guarda-chuva */
         .umbrella-overlay {
             display: none; /* Escondido por padrão */
             position: fixed;
@@ -503,7 +523,7 @@
     <main class="main-content" id="mainContent">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="flash-messages-container">
+                <div class="flash-messages-container" id="flashMessagesContainer">
                     {% for category, message in messages %}
                         <div class="flash-{{ category }}">
                             {% if category == 'message' %}
@@ -529,9 +549,10 @@
     <div id="umbrellaOverlay" class="umbrella-overlay">
         <div class="umbrella-overlay-content">
             <button class="btn-close" id="closeUmbrellaOverlay">&times;</button>
-            <i class="fas fa-umbrella"></i> <h2>Seu Código de Retirada</h2>
+            <i class="fas fa-umbrella"></i>
+            <h2 id="overlayTitle">Seu Código de Retirada</h2> {# Título dinâmico #}
             <div class="generated-code" id="retrievalCodeDisplay"></div>
-            <button class="action-button" id="confirmOkButton">OK</button>
+            <button class="action-button" id="confirmActionButton">OK</button {# Botão genérico para ações #}
         </div>
     </div>
 
@@ -540,13 +561,17 @@
         const sidebar = document.getElementById('sidebar');
         const hamburgerMenu = document.getElementById('hamburgerMenu');
         const userDropdown = document.getElementById('userDropdown');
+        const flashMessagesContainer = document.getElementById('flashMessagesContainer');
         
-        // Novos elementos para o overlay
+        // Elementos para o overlay
         const umbrellaActionButton = document.getElementById('umbrellaActionButton');
         const umbrellaOverlay = document.getElementById('umbrellaOverlay');
         const closeUmbrellaOverlay = document.getElementById('closeUmbrellaOverlay');
-        const retrievalCodeDisplay = document.getElementById('retrievalCodeDisplay'); // Elemento para exibir o código
-        const confirmOkButton = document.getElementById('confirmOkButton'); // Novo botão OK
+        const retrievalCodeDisplay = document.getElementById('retrievalCodeDisplay');
+        const confirmActionButton = document.getElementById('confirmActionButton'); // Botão OK/Confirmar
+        const overlayTitle = document.getElementById('overlayTitle'); // Título do overlay
+
+        let hasUmbrella = Boolean({{ has_umbrella | tojson }}); // Variável do Jinja2 para JS
 
         function toggleSidebar() {
             sidebar.classList.toggle('expanded');
@@ -558,7 +583,6 @@
             userDropdown.classList.toggle('show');
         }
 
-        // Função para gerar um código aleatório de 6 caracteres (letras e números maiúsculos)
         function generateRandomCode(length) {
             const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
             let result = '';
@@ -569,72 +593,120 @@
             return result;
         }
 
-        hamburgerMenu.addEventListener('click', toggleSidebar);
-        userDropdown.addEventListener('click', toggleUserDropdown);
+        // Função para exibir mensagem de flash
+        function showFlashMessage(message, category) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flash-${category}`;
+            messageDiv.innerHTML = `
+                <i class="fas fa-${category === 'message' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                ${message}
+            `;
+            if (flashMessagesContainer) {
+                flashMessagesContainer.appendChild(messageDiv);
+                setTimeout(() => {
+                    messageDiv.classList.add('hide');
+                    messageDiv.addEventListener('transitionend', () => {
+                        messageDiv.remove();
+                    });
+                }, 5000); // Mensagens somem após 5 segundos
+            }
+        }
 
-        // Funções para o overlay do guarda-chuva
+        // Função para atualizar o estado do botão (Retirar/Devolver)
+        function updateActionButtonState() {
+            if (hasUmbrella) {
+                umbrellaActionButton.textContent = 'Devolver guarda-chuva';
+                umbrellaActionButton.classList.add('return-button');
+            } else {
+                umbrellaActionButton.textContent = 'Retirar um guarda-chuva';
+                umbrellaActionButton.classList.remove('return-button');
+            }
+        }
+
+        // Adiciona event listener ao botão principal (Retirar/Devolver)
         umbrellaActionButton.addEventListener('click', () => {
-            // Gera e exibe o código antes de mostrar o overlay
-            retrievalCodeDisplay.textContent = generateRandomCode(6);
-            umbrellaOverlay.classList.add('active');
+            if (hasUmbrella) {
+                // Se o usuário tem um guarda-chuva, o botão é para DEVOLVER
+                overlayTitle.textContent = 'Confirmar Devolução?';
+                retrievalCodeDisplay.textContent = 'Clique OK para devolver'; // Mensagem para devolução
+                confirmActionButton.textContent = 'Devolver';
+                confirmActionButton.onclick = handleDevolucao; // Atribui a função de devolução
+            } else {
+                // Se o usuário NÃO tem um guarda-chuva, o botão é para RETIRAR
+                overlayTitle.textContent = 'Seu Código de Retirada';
+                retrievalCodeDisplay.textContent = generateRandomCode(6); // Gera o código para retirada
+                confirmActionButton.textContent = 'Retirar';
+                confirmActionButton.onclick = handleRetirada; // Atribui a função de retirada
+            }
+            umbrellaOverlay.classList.add('active'); // Mostra o overlay
         });
 
+        // Função para lidar com a RETIRADA do guarda-chuva
+        async function handleRetirada() {
+            const generatedCode = retrievalCodeDisplay.textContent;
+
+            try {
+                const response = await fetch('/registrar_retirada', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codigo: generatedCode })
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showFlashMessage(data.message, 'message');
+                    hasUmbrella = true; // Atualiza o estado
+                    updateActionButtonState(); // Atualiza o texto do botão
+                    umbrellaOverlay.classList.remove('active'); // Fecha o overlay
+                } else {
+                    showFlashMessage(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Erro na requisição de retirada:', error);
+                showFlashMessage('Ocorreu um erro ao tentar retirar o guarda-chuva.', 'error');
+            }
+        }
+
+        // Função para lidar com a DEVOLUÇÃO do guarda-chuva
+        async function handleDevolucao() {
+            try {
+                const response = await fetch('/registrar_devolucao', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}) // Não precisa de código para devolução, apenas user_id
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showFlashMessage(data.message, 'message');
+                    hasUmbrella = false; // Atualiza o estado
+                    updateActionButtonState(); // Atualiza o texto do botão
+                    umbrellaOverlay.classList.remove('active'); // Fecha o overlay
+                } else {
+                    showFlashMessage(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Erro na requisição de devolução:', error);
+                showFlashMessage('Ocorreu um erro ao tentar devolver o guarda-chuva.', 'error');
+            }
+        }
+
+        // Fechar overlay clicando no X ou fora do conteúdo
         closeUmbrellaOverlay.addEventListener('click', () => {
             umbrellaOverlay.classList.remove('active');
         });
 
-        // Ação do botão "OK" no overlay
-        confirmOkButton.addEventListener('click', () => {
-            const generatedCode = retrievalCodeDisplay.textContent;
-
-            // Faz a requisição POST para o backend
-            fetch('/registrar_retirada', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ codigo: generatedCode })
-            })
-            .then(response => {
-                // Verifica se a resposta HTTP é OK (status 2xx)
-                if (!response.ok) {
-                    // Se a resposta não for OK, tenta ler a mensagem de erro do backend
-                    return response.json().then(errData => {
-                        throw new Error(errData.message || 'Erro desconhecido ao registrar retirada.');
-                    });
-                }
-                return response.json(); // Se OK, parseia o JSON
-            })
-            .then(data => {
-                if (data.status === 'success') {
-                    alert('Guarda-chuva retirado com sucesso! Código: ' + generatedCode + '. ' + data.message);
-                    umbrellaOverlay.classList.remove('active'); // Fecha o overlay após sucesso
-                } else {
-                    // Este bloco será acionado se o backend retornar status 200 mas com status:'error' no JSON
-                    alert('Erro ao registrar retirada: ' + data.message);
-                }
-            })
-            .catch(error => {
-                // Captura erros de rede ou erros lançados pelo .then(response => { ... })
-                console.error('Erro na requisição ou no servidor:', error);
-                alert('Ocorreu um erro ao tentar registrar a retirada: ' + error.message);
-            });
-        });
-
-        // Fechar overlay clicando fora do conteúdo (mas não no botão que o abre)
         umbrellaOverlay.addEventListener('click', (event) => {
-            if (event.target === umbrellaOverlay) { // Verifica se o clique foi diretamente no fundo do overlay
+            if (event.target === umbrellaOverlay) {
                 umbrellaOverlay.classList.remove('active');
             }
         });
-
 
         // Close dropdown if clicked outside
         document.addEventListener('click', function(event) {
             if (!userDropdown.contains(event.target)) {
                 userDropdown.classList.remove('show');
             }
-            // Logic for sidebar closing on outside click (already there)
             if (window.innerWidth <= 768 && sidebar.classList.contains('expanded')) {
                 const isClickInsideSidebar = sidebar.contains(event.target);
                 const isClickOnHamburger = hamburgerMenu.contains(event.target);
@@ -648,24 +720,36 @@
         // Initialize sidebar state on load and resize
         window.addEventListener('resize', function() {
             if (window.innerWidth > 768) {
-                sidebar.classList.add('expanded'); // Always expanded on desktop
+                sidebar.classList.add('expanded');
                 document.body.classList.remove('sidebar-open');
                 document.body.style.overflow = '';
             } else {
-                sidebar.classList.remove('expanded'); // Always collapsed on mobile
+                sidebar.classList.remove('expanded');
                 document.body.classList.remove('sidebar-open');
                 document.body.style.overflow = '';
             }
-            // Close dropdown on resize if it was open
             userDropdown.classList.remove('show');
         });
 
         // Initial state when page loads
         document.addEventListener('DOMContentLoaded', function() {
             if (window.innerWidth > 768) {
-                sidebar.classList.add('expanded'); // Start expanded on desktop
+                sidebar.classList.add('expanded');
             } else {
-                sidebar.classList.remove('expanded'); // Start collapsed on mobile
+                sidebar.classList.remove('expanded');
+            }
+
+            // NOVO: Faz as mensagens de flash sumirem automaticamente
+            if (flashMessagesContainer) {
+                const messages = flashMessagesContainer.querySelectorAll('.flash-message, .flash-error');
+                messages.forEach(messageDiv => {
+                    setTimeout(() => {
+                        messageDiv.classList.add('hide');
+                        messageDiv.addEventListener('transitionend', () => {
+                            messageDiv.remove();
+                        });
+                    }, 5000); // Mensagens somem após 5 segundos
+                });
             }
 
             // Inicializa o mapa Leaflet APÓS o DOM estar carregado
@@ -698,6 +782,9 @@
 
             L.marker([-23.5042, -46.4950], {icon: umbrellaIcon}).addTo(map)
                 .bindPopup('<b>Ponto de Retirada - Águia</b><br>JLV Fabrica de Guarda-Sóis e Ombrelones Personalizados');
+            
+            // NOVO: Chama a função para atualizar o estado do botão no carregamento da página
+            updateActionButtonState();
         });
     </script>
 </body>
