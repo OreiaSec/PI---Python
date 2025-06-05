@@ -851,7 +851,8 @@ def registrar_devolucao():
         if not ultima_retirada:
             return jsonify({'status': 'error', 'message': 'Nenhum guarda-chuva ativo para este usuário. Não há o que devolver.'}), 400
         
-        retirada_id = ultima_retima['id']
+        # CORREÇÃO: Troca 'ultima_retima' por 'ultima_retirada'
+        retirada_id = ultima_retirada['id'] 
         codigo_guarda_chuva = ultima_retirada['codigo_guarda_chuva']
 
         # 2. Registrar a devolução
