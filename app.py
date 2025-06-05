@@ -1,10 +1,10 @@
 import os
-from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template, jsonify
+from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template, jsonify # Adicionado jsonify
 import mysql.connector
 from mysql.connector import Error
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
-from datetime import datetime, date, timedelta # Importar datetime, date e timedelta
+from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'sua_chave_secreta_super_segura_aqui')
@@ -43,7 +43,8 @@ def get_db_connection():
     return None
 
 def init_database():
-    """Cria as tabelas de usuários, retirada e devolução se não existirem"""
+    """Cria as tabelas de usuários, retirada e devolução se não existirem.
+       Adiciona colunas 'user_id' e 'ativo' se faltarem na tabela 'umbrella_retirada'."""
     try:
         connection = get_db_connection()
         if connection:
@@ -67,7 +68,7 @@ def init_database():
             cursor.execute(create_users_table_query)
             print("Tabela 'users_from_bb' criada ou já existe.")
 
-            # SQL para criar a tabela umbrella_retirada (com a nova coluna 'ativo')
+            # SQL para criar a tabela umbrella_retirada
             create_umbrella_retirada_table_query = """
             CREATE TABLE IF NOT EXISTS umbrella_retirada (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -79,12 +80,44 @@ def init_database():
                 data_retirada DATE NOT NULL,
                 hora_retirada TIME NOT NULL,
                 timestamp_retirada DATETIME DEFAULT CURRENT_TIMESTAMP,
-                ativo BOOLEAN DEFAULT TRUE, -- Novo campo para indicar se está ativo (em posse)
+                ativo BOOLEAN DEFAULT TRUE,
                 FOREIGN KEY (user_id) REFERENCES users_from_bb(id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
             cursor.execute(create_umbrella_retirada_table_query)
-            print("Tabela 'umbrella_retirada' criada ou já existe (com campo 'ativo').")
+            print("Tabela 'umbrella_retirada' criada ou já existe.")
+
+            # Verifica e adiciona a coluna 'user_id' se ela não existir
+            try:
+                cursor.execute("ALTER TABLE umbrella_retirada ADD COLUMN user_id INT AFTER id")
+                print("Coluna 'user_id' adicionada à tabela 'umbrella_retirada'.")
+            except Error as e:
+                if "Duplicate column name 'user_id'" not in str(e):
+                    print(f"Erro ao adicionar coluna 'user_id': {e}")
+                else:
+                    print("Coluna 'user_id' já existe na tabela 'umbrella_retirada'.")
+            
+            # Verifica e adiciona a coluna 'ativo' se ela não existir
+            try:
+                cursor.execute("ALTER TABLE umbrella_retirada ADD COLUMN ativo BOOLEAN DEFAULT TRUE")
+                print("Coluna 'ativo' adicionada à tabela 'umbrella_retirada'.")
+            except Error as e:
+                if "Duplicate column name 'ativo'" not in str(e):
+                    print(f"Erro ao adicionar coluna 'ativo': {e}")
+                else:
+                    print("Coluna 'ativo' já existe na tabela 'umbrella_retirada'.")
+
+            # Adiciona a restrição FOREIGN KEY user_id se ela ainda não existir
+            # Isso é mais complexo, pois pode exigir que a tabela esteja vazia ou que as chaves existam
+            # Uma abordagem simples é tentar adicionar e ignorar se já existir.
+            try:
+                cursor.execute("ALTER TABLE umbrella_retirada ADD CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users_from_bb(id)")
+                print("Foreign Key 'fk_user_id' adicionada à tabela 'umbrella_retirada'.")
+            except Error as e:
+                if "Duplicate foreign key constraint name" not in str(e) and "Foreign key constraint already exists" not in str(e):
+                    print(f"Erro ao adicionar FOREIGN KEY 'fk_user_id': {e}")
+                else:
+                    print("Foreign Key 'fk_user_id' já existe ou foi adicionada anteriormente.")
 
             # SQL para criar a tabela umbrella_devolucao
             create_umbrella_devolucao_table_query = """
@@ -104,7 +137,7 @@ def init_database():
             connection.commit()
 
     except Error as e:
-        print(f"Erro ao criar tabelas: {e}")
+        print(f"Erro geral ao criar/atualizar tabelas: {e}")
     finally:
         if connection and connection.is_connected():
             cursor.close()
