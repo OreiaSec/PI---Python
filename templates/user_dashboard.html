@@ -58,13 +58,14 @@
             padding: 0 15px; /* Padding interno para a logo */
             margin-bottom: 30px;
             text-align: center; /* Centraliza a imagem */
-            display: none; /* Esconde por padrão */
-            opacity: 0;
-            transition: opacity 0.1s ease;
+            opacity: 0; /* Esconde por padrão */
+            max-height: 0; /* Esconde visualmente */
+            overflow: hidden;
+            transition: opacity 0.1s ease, max-height 0.3s ease;
         }
         .sidebar.expanded .logo {
-            display: block; /* Mostra a logo quando expandida */
-            opacity: 1;
+            opacity: 1; /* Mostra a logo quando expandida */
+            max-height: 150px; /* Ou um valor que comporte a logo */
         }
         .sidebar .logo img {
             width: 100%;
@@ -79,13 +80,14 @@
             padding-bottom: 10px;
             width: 100%;
             text-align: center;
-            display: none; /* Esconde por padrão */
-            opacity: 0;
-            transition: opacity 0.1s ease;
+            opacity: 0; /* Esconde por padrão */
+            max-height: 0; /* Esconde visualmente */
+            overflow: hidden;
+            transition: opacity 0.1s ease, max-height 0.3s ease;
         }
         .sidebar.expanded h3 {
-            display: block; /* Mostra o título quando expandida */
-            opacity: 1;
+            opacity: 1; /* Mostra o título quando expandida */
+            max-height: 50px; /* Ou um valor que comporte o título */
         }
 
         .sidebar ul {
@@ -119,14 +121,15 @@
         }
         
         .sidebar ul li a .link-text {
-            display: none; /* Esconde o texto por padrão */
-            opacity: 0;
-            transition: opacity 0.1s ease;
+            opacity: 0; /* Esconde o texto por padrão */
+            width: 0; /* Largura zero para não ocupar espaço */
+            overflow: hidden;
+            transition: opacity 0.1s ease, width 0.1s ease;
         }
 
         .sidebar.expanded ul li a .link-text {
-            display: inline; /* Mostra o texto quando expandido */
-            opacity: 1;
+            opacity: 1; /* Mostra o texto quando expandido */
+            width: auto; /* Permite que o texto ocupe sua largura natural */
         }
 
         .sidebar ul li a:hover {
@@ -552,7 +555,7 @@
             <i class="fas fa-umbrella"></i>
             <h2 id="overlayTitle">Seu Código de Retirada</h2> {# Título dinâmico #}
             <div class="generated-code" id="retrievalCodeDisplay"></div>
-            <button class="action-button" id="confirmActionButton">OK</button {# Botão genérico para ações #}
+            <button class="action-button" id="confirmActionButton">OK</button> {# Botão genérico para ações #}
         </div>
     </div>
 
@@ -571,12 +574,42 @@
         const confirmActionButton = document.getElementById('confirmActionButton'); // Botão OK/Confirmar
         const overlayTitle = document.getElementById('overlayTitle'); // Título do overlay
 
-        let hasUmbrella = Boolean({{ has_umbrella | tojson }}); // Variável do Jinja2 para JS
+        // Variável hasUmbrella será inicializada após a chamada AJAX em DOMContentLoaded
+        let hasUmbrella = false; 
 
         function toggleSidebar() {
             sidebar.classList.toggle('expanded');
+            // Controla a classe sidebar-open no body para o overlay em mobile
             document.body.classList.toggle('sidebar-open', sidebar.classList.contains('expanded') && window.innerWidth <= 768);
+            // Previne scroll do corpo em mobile quando sidebar está aberta
             document.body.style.overflow = sidebar.classList.contains('expanded') && window.innerWidth <= 768 ? 'hidden' : '';
+
+            // Ajusta a visibilidade do texto da sidebar para acompanhar a expansão
+            const linkTexts = document.querySelectorAll('.sidebar .link-text');
+            const logo = document.querySelector('.sidebar .logo');
+            const h3 = document.querySelector('.sidebar h3');
+
+            if (sidebar.classList.contains('expanded')) {
+                // Ao expandir, mostrar logo e título
+                logo.style.opacity = 1;
+                logo.style.maxHeight = '150px'; // Ou um valor que comporte a logo
+                h3.style.opacity = 1;
+                h3.style.maxHeight = '50px'; // Ou um valor que comporte o título
+                linkTexts.forEach(span => {
+                    span.style.opacity = 1;
+                    span.style.width = 'auto';
+                });
+            } else {
+                // Ao recolher, esconder logo e título
+                logo.style.opacity = 0;
+                logo.style.maxHeight = '0';
+                h3.style.opacity = 0;
+                h3.style.maxHeight = '0';
+                linkTexts.forEach(span => {
+                    span.style.opacity = 0;
+                    span.style.width = '0';
+                });
+            }
         }
 
         function toggleUserDropdown() {
@@ -601,15 +634,26 @@
                 <i class="fas fa-${category === 'message' ? 'check-circle' : 'exclamation-triangle'}"></i>
                 ${message}
             `;
-            if (flashMessagesContainer) {
-                flashMessagesContainer.appendChild(messageDiv);
-                setTimeout(() => {
-                    messageDiv.classList.add('hide');
-                    messageDiv.addEventListener('transitionend', () => {
-                        messageDiv.remove();
-                    });
-                }, 5000); // Mensagens somem após 5 segundos
+            // Se já existir um container, adicione a mensagem a ele. Senão, crie um.
+            let container = document.getElementById('flashMessagesContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'flashMessagesContainer';
+                container.className = 'flash-messages-container';
+                document.body.prepend(container); // Adiciona no início do body
             }
+            container.appendChild(messageDiv);
+
+            setTimeout(() => {
+                messageDiv.classList.add('hide');
+                messageDiv.addEventListener('transitionend', () => {
+                    messageDiv.remove();
+                    // Opcional: remover o container se estiver vazio após remover a mensagem
+                    if (container && container.children.length === 0) {
+                        container.remove();
+                    }
+                });
+            }, 5000); // Mensagens somem após 5 segundos
         }
 
         // Função para atualizar o estado do botão (Retirar/Devolver)
@@ -623,22 +667,39 @@
             }
         }
 
+        // Função para verificar o status do guarda-chuva do usuário via AJAX
+        async function checkUmbrellaStatusAndSetButton() {
+            try {
+                const response = await fetch('/check_umbrella_status');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    hasUmbrella = data.has_umbrella;
+                    updateActionButtonState(); // Atualiza o botão com base no status do backend
+                } else {
+                    console.error('Erro ao verificar status do guarda-chuva:', data.message);
+                    showFlashMessage('Erro ao carregar status do guarda-chuva: ' + data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Erro de rede ao verificar status do guarda-chuva:', error);
+                showFlashMessage('Erro de conexão ao carregar status do guarda-chuva.', 'error');
+            }
+        }
+
         // Adiciona event listener ao botão principal (Retirar/Devolver)
         umbrellaActionButton.addEventListener('click', () => {
             if (hasUmbrella) {
-                // Se o usuário tem um guarda-chuva, o botão é para DEVOLVER
                 overlayTitle.textContent = 'Confirmar Devolução?';
-                retrievalCodeDisplay.textContent = 'Clique OK para devolver'; // Mensagem para devolução
+                retrievalCodeDisplay.textContent = 'Clique OK para devolver'; 
                 confirmActionButton.textContent = 'Devolver';
-                confirmActionButton.onclick = handleDevolucao; // Atribui a função de devolução
+                confirmActionButton.onclick = handleDevolucao; 
             } else {
-                // Se o usuário NÃO tem um guarda-chuva, o botão é para RETIRAR
                 overlayTitle.textContent = 'Seu Código de Retirada';
-                retrievalCodeDisplay.textContent = generateRandomCode(6); // Gera o código para retirada
+                retrievalCodeDisplay.textContent = generateRandomCode(6); 
                 confirmActionButton.textContent = 'Retirar';
-                confirmActionButton.onclick = handleRetirada; // Atribui a função de retirada
+                confirmActionButton.onclick = handleRetirada; 
             }
-            umbrellaOverlay.classList.add('active'); // Mostra o overlay
+            umbrellaOverlay.classList.add('active'); 
         });
 
         // Função para lidar com a RETIRADA do guarda-chuva
@@ -655,7 +716,7 @@
 
                 if (data.status === 'success') {
                     showFlashMessage(data.message, 'message');
-                    hasUmbrella = true; // Atualiza o estado
+                    hasUmbrella = true; // Atualiza o estado local
                     updateActionButtonState(); // Atualiza o texto do botão
                     umbrellaOverlay.classList.remove('active'); // Fecha o overlay
                 } else {
@@ -673,13 +734,13 @@
                 const response = await fetch('/registrar_devolucao', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({}) // Não precisa de código para devolução, apenas user_id
+                    body: JSON.stringify({}) 
                 });
                 const data = await response.json();
 
                 if (data.status === 'success') {
                     showFlashMessage(data.message, 'message');
-                    hasUmbrella = false; // Atualiza o estado
+                    hasUmbrella = false; // Atualiza o estado local
                     updateActionButtonState(); // Atualiza o texto do botão
                     umbrellaOverlay.classList.remove('active'); // Fecha o overlay
                 } else {
@@ -702,11 +763,15 @@
             }
         });
 
-        // Close dropdown if clicked outside
+        hamburgerMenu.addEventListener('click', toggleSidebar);
+        userDropdown.addEventListener('click', toggleUserDropdown);
+
+        // Fecha o dropdown se clicado fora
         document.addEventListener('click', function(event) {
             if (!userDropdown.contains(event.target)) {
                 userDropdown.classList.remove('show');
             }
+            // Lógica para fechar a sidebar ao clicar fora
             if (window.innerWidth <= 768 && sidebar.classList.contains('expanded')) {
                 const isClickInsideSidebar = sidebar.contains(event.target);
                 const isClickOnHamburger = hamburgerMenu.contains(event.target);
@@ -717,14 +782,34 @@
             }
         });
 
-        // Initialize sidebar state on load and resize
+        // Inicializa o estado da sidebar no carregamento e redimensionamento
         window.addEventListener('resize', function() {
             if (window.innerWidth > 768) {
                 sidebar.classList.add('expanded');
+                // Assegura que o texto da sidebar aparece no desktop
+                document.querySelectorAll('.sidebar .link-text').forEach(span => {
+                    span.style.opacity = 1;
+                    span.style.width = 'auto';
+                });
+                document.querySelector('.sidebar .logo').style.opacity = 1;
+                document.querySelector('.sidebar .logo').style.maxHeight = '150px';
+                document.querySelector('.sidebar h3').style.opacity = 1;
+                document.querySelector('.sidebar h3').style.maxHeight = '50px';
+
                 document.body.classList.remove('sidebar-open');
                 document.body.style.overflow = '';
             } else {
                 sidebar.classList.remove('expanded');
+                // Assegura que o texto da sidebar desaparece no mobile
+                document.querySelectorAll('.sidebar .link-text').forEach(span => {
+                    span.style.opacity = 0;
+                    span.style.width = '0';
+                });
+                document.querySelector('.sidebar .logo').style.opacity = 0;
+                document.querySelector('.sidebar .logo').style.maxHeight = '0';
+                document.querySelector('.sidebar h3').style.opacity = 0;
+                document.querySelector('.sidebar h3').style.maxHeight = '0';
+
                 document.body.classList.remove('sidebar-open');
                 document.body.style.overflow = '';
             }
@@ -732,12 +817,15 @@
         });
 
         // Initial state when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Inicializa o estado da sidebar (desktop/mobile)
             if (window.innerWidth > 768) {
                 sidebar.classList.add('expanded');
             } else {
                 sidebar.classList.remove('expanded');
             }
+            // Chama toggleSidebar para garantir que os elementos internos (logo, texto) se ajustem
+            toggleSidebar();
 
             // NOVO: Faz as mensagens de flash sumirem automaticamente
             if (flashMessagesContainer) {
@@ -783,8 +871,8 @@
             L.marker([-23.5042, -46.4950], {icon: umbrellaIcon}).addTo(map)
                 .bindPopup('<b>Ponto de Retirada - Águia</b><br>JLV Fabrica de Guarda-Sóis e Ombrelones Personalizados');
             
-            // NOVO: Chama a função para atualizar o estado do botão no carregamento da página
-            updateActionButtonState();
+            // NOVO: Chama a função para verificar o estado do guarda-chuva e atualizar o botão
+            await checkUmbrellaStatusAndSetButton();
         });
     </script>
 </body>
