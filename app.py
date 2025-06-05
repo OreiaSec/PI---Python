@@ -315,7 +315,7 @@ html_code_for_index_page = """
 
         .input-group input {
             width: calc(100% - 60px); /* Ajusta largura para acomodar padding e ícone */
-            padding: 14px 15px 14px 50px; /* Padding para acomodar o ícone */
+            padding: 14px 15px 14px 40px; /* Alterado de 50px para 40px para alinhar melhor */
             border: 1px solid #ccc;
             border-radius: 8px;
             font-size: 1em;
