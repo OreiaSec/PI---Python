@@ -676,6 +676,9 @@
                 if (data.status === 'success') {
                     hasUmbrella = data.has_umbrella;
                     updateActionButtonState(); // Atualiza o botão com base no status do backend
+                } else if (response.status === 401) {
+                    // Usuário não autenticado, redireciona para o login
+                    window.location.href = '/'; 
                 } else {
                     console.error('Erro ao verificar status do guarda-chuva:', data.message);
                     showFlashMessage('Erro ao carregar status do guarda-chuva: ' + data.message, 'error');
