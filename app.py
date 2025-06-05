@@ -224,7 +224,7 @@ html_code_for_index_page = """
             align-items: center; /* Centraliza verticalmente */
             min-height: 100vh; /* Garante que ocupe a altura total da viewport */
             color: #333;
-            overflow: hidden; /* Evita rolagem desnecessária */
+            overflow: hidden; /* Evita rolagem desnecessária no body principal */
         }
 
         /* Container principal do formulário */
@@ -239,6 +239,10 @@ html_code_for_index_page = """
             box-sizing: border-box; /* Inclui padding e borda na largura */
             position: relative; /* Para posicionamento das mensagens flash */
             animation: fadeIn 0.8s ease-out;
+            /* ADICIONADO: Restringe a altura e permite rolagem */
+            max-height: 90vh; /* Limita a altura do container */
+            overflow-y: auto; /* Permite rolagem vertical se o conteúdo for muito grande */
+            padding-right: 20px; /* Adiciona padding para barra de rolagem */
         }
 
         @keyframes fadeIn {
@@ -313,7 +317,8 @@ html_code_for_index_page = """
             font-weight: bold;
         }
 
-        .input-group input {
+        .input-group input,
+        .input-group select { /* Adicionado 'select' aqui para aplicar o mesmo estilo */
             width: calc(100% - 60px); /* Ajusta largura para acomodar padding e ícone */
             padding: 14px 15px 14px 40px; /* Alterado de 50px para 40px para alinhar melhor */
             border: 1px solid #ccc;
@@ -322,9 +327,11 @@ html_code_for_index_page = """
             color: #333;
             background-color: #f8f8f8;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            box-sizing: border-box; /* Garante que padding e borda não aumentem a largura total */
         }
 
-        .input-group input:focus {
+        .input-group input:focus,
+        .input-group select:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
             outline: none;
