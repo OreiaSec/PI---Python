@@ -45,6 +45,8 @@ def get_db_connection():
 def init_database():
     """Cria as tabelas de usuários, retirada e devolução se não existirem.
        Adiciona colunas 'user_id' e 'ativo' se faltarem na tabela 'umbrella_retirada'."""
+    connection = None # Inicializa connection para o bloco finally
+    cursor = None # Inicializa cursor para o bloco finally
     try:
         connection = get_db_connection()
         if connection:
@@ -68,30 +70,28 @@ def init_database():
             cursor.execute(create_users_table_query)
             print("Tabela 'users_from_bb' criada ou já existe.")
 
-            # SQL para criar a tabela umbrella_retirada
+            # SQL para criar a tabela umbrella_retirada (apenas a estrutura básica)
             create_umbrella_retirada_table_query = """
             CREATE TABLE IF NOT EXISTS umbrella_retirada (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT,
                 nome_usuario VARCHAR(255) NOT NULL,
                 email VARCHAR(255) NOT NULL,
                 telefone VARCHAR(50) NOT NULL,
                 codigo_guarda_chuva VARCHAR(6) NOT NULL,
                 data_retirada DATE NOT NULL,
                 hora_retirada TIME NOT NULL,
-                timestamp_retirada DATETIME DEFAULT CURRENT_TIMESTAMP,
-                ativo BOOLEAN DEFAULT TRUE,
-                FOREIGN KEY (user_id) REFERENCES users_from_bb(id)
+                timestamp_retirada DATETIME DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
             cursor.execute(create_umbrella_retirada_table_query)
-            print("Tabela 'umbrella_retirada' criada ou já existe.")
+            print("Tabela 'umbrella_retirada' criada ou já existe (estrutura básica).")
 
             # Verifica e adiciona a coluna 'user_id' se ela não existir
             try:
                 cursor.execute("ALTER TABLE umbrella_retirada ADD COLUMN user_id INT AFTER id")
                 print("Coluna 'user_id' adicionada à tabela 'umbrella_retirada'.")
             except Error as e:
+                # Erro 1060 é "Duplicate column name", que podemos ignorar
                 if "Duplicate column name 'user_id'" not in str(e):
                     print(f"Erro ao adicionar coluna 'user_id': {e}")
                 else:
@@ -102,22 +102,32 @@ def init_database():
                 cursor.execute("ALTER TABLE umbrella_retirada ADD COLUMN ativo BOOLEAN DEFAULT TRUE")
                 print("Coluna 'ativo' adicionada à tabela 'umbrella_retirada'.")
             except Error as e:
+                # Erro 1060 é "Duplicate column name", que podemos ignorar
                 if "Duplicate column name 'ativo'" not in str(e):
                     print(f"Erro ao adicionar coluna 'ativo': {e}")
                 else:
                     print("Coluna 'ativo' já existe na tabela 'umbrella_retirada'.")
 
             # Adiciona a restrição FOREIGN KEY user_id se ela ainda não existir
-            # Isso é mais complexo, pois pode exigir que a tabela esteja vazia ou que as chaves existam
-            # Uma abordagem simples é tentar adicionar e ignorar se já existir.
-            try:
-                cursor.execute("ALTER TABLE umbrella_retirada ADD CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users_from_bb(id)")
-                print("Foreign Key 'fk_user_id' adicionada à tabela 'umbrella_retirada'.")
-            except Error as e:
-                if "Duplicate foreign key constraint name" not in str(e) and "Foreign key constraint already exists" not in str(e):
-                    print(f"Erro ao adicionar FOREIGN KEY 'fk_user_id': {e}")
-                else:
-                    print("Foreign Key 'fk_user_id' já existe ou foi adicionada anteriormente.")
+            # Primeiro, verifica se a FK já existe (esta é uma forma mais robusta)
+            cursor.execute(f"""
+                SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+                WHERE CONSTRAINT_TYPE = 'FOREIGN KEY'
+                AND TABLE_SCHEMA = '{DB_CONFIG['database']}'
+                AND TABLE_NAME = 'umbrella_retirada'
+                AND CONSTRAINT_NAME = 'fk_umbrella_user_id';
+            """)
+            fk_exists = cursor.fetchone()
+
+            if not fk_exists:
+                try:
+                    cursor.execute("ALTER TABLE umbrella_retirada ADD CONSTRAINT fk_umbrella_user_id FOREIGN KEY (user_id) REFERENCES users_from_bb(id)")
+                    print("Foreign Key 'fk_umbrella_user_id' adicionada à tabela 'umbrella_retirada'.")
+                except Error as e:
+                    print(f"Erro ao adicionar FOREIGN KEY 'fk_umbrella_user_id': {e}")
+            else:
+                print("Foreign Key 'fk_umbrella_user_id' já existe na tabela 'umbrella_retirada'.")
+
 
             # SQL para criar a tabela umbrella_devolucao
             create_umbrella_devolucao_table_query = """
@@ -139,8 +149,9 @@ def init_database():
     except Error as e:
         print(f"Erro geral ao criar/atualizar tabelas: {e}")
     finally:
-        if connection and connection.is_connected():
+        if cursor:
             cursor.close()
+        if connection and connection.is_connected():
             connection.close()
 
 def validar_cpf(cpf):
@@ -203,7 +214,7 @@ def verificar_login(email, senha):
         
         cursor = connection.cursor(dictionary=True)
 
-        # Selecionar nome, email, telefone e CPF
+        # Selecionar nome, email, telefone, CPF e ID
         query = "SELECT id, nome, email, telefone, cpf, senha FROM users_from_bb WHERE email = %s"
         cursor.execute(query, (email,))
         user = cursor.fetchone()
@@ -223,7 +234,7 @@ def verificar_login(email, senha):
             cursor.close()
             connection.close()
 
-# Código HTML com as correções aplicadas (Este bloco é para o index.html, mas mantemos como string aqui para o Flask)
+# Código HTML da tela de login (mantido o que você gostou)
 html_code_for_index_page = """
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -496,6 +507,28 @@ html_code_for_index_page = """
             <i class="fas fa-user"></i>
             <label for="nomeTecnico">Nome Completo:</label>
             <input type="text" id="nomeTecnico" name="nome" placeholder="Seu Nome Completo" required>
+        </div>
+        <div class="input-group">
+            <i class="fas fa-id-card"></i> {# Novo ícone para CPF #}
+            <label for="cpfCadastro">CPF (apenas números):</label>
+            <input type="text" id="cpfCadastro" name="cpf" placeholder="Apenas 11 dígitos" required pattern="[0-9]{11}" maxlength="11">
+        </div>
+        <div class="input-group">
+            <i class="fas fa-globe"></i> {# Novo ícone para País #}
+            <label for="paisCadastro">País:</label>
+            <select name="pais" id="paisCadastro" required>
+                <option value="">Selecione seu país</option>
+                <option value="Brasil">Brasil</option>
+                <option value="Portugal">Portugal</option>
+                <option value="Estados Unidos">Estados Unidos</option>
+                <option value="Argentina">Argentina</option>
+                <option value="Outro">Outro</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <i class="fas fa-phone"></i> {# Novo ícone para Telefone #}
+            <label for="telefoneCadastro">Telefone:</label>
+            <input type="text" id="telefoneCadastro" name="telefone" placeholder="Com DDD" required>
         </div>
         <div class="input-group">
             <i class="fas fa-envelope"></i>
