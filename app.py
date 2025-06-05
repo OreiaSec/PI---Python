@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template, jsonify # Adicionado jsonify
+from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template, jsonify
 import mysql.connector
 from mysql.connector import Error
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -44,15 +44,15 @@ def get_db_connection():
 
 def init_database():
     """Cria as tabelas de usuários, retirada e devolução se não existirem.
-       Adiciona colunas 'user_id' e 'ativo' se faltarem na tabela 'umbrella_retirada'."""
-    connection = None # Inicializa connection para o bloco finally
-    cursor = None # Inicializa cursor para o bloco finally
+       Adiciona colunas 'user_id' e 'ativo' e FKs se faltarem."""
+    connection = None
+    cursor = None
     try:
         connection = get_db_connection()
         if connection:
             cursor = connection.cursor()
 
-            # SQL para criar a tabela users_from_bb
+            # 1. Criar tabela users_from_bb (se não existir)
             create_users_table_query = """
             CREATE TABLE IF NOT EXISTS users_from_bb (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -70,7 +70,7 @@ def init_database():
             cursor.execute(create_users_table_query)
             print("Tabela 'users_from_bb' criada ou já existe.")
 
-            # SQL para criar a tabela umbrella_retirada (apenas a estrutura básica)
+            # 2. Criar tabela umbrella_retirada (se não existir, com a estrutura inicial)
             create_umbrella_retirada_table_query = """
             CREATE TABLE IF NOT EXISTS umbrella_retirada (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -86,30 +86,31 @@ def init_database():
             cursor.execute(create_umbrella_retirada_table_query)
             print("Tabela 'umbrella_retirada' criada ou já existe (estrutura básica).")
 
-            # Verifica e adiciona a coluna 'user_id' se ela não existir
-            try:
-                cursor.execute("ALTER TABLE umbrella_retirada ADD COLUMN user_id INT AFTER id")
-                print("Coluna 'user_id' adicionada à tabela 'umbrella_retirada'.")
-            except Error as e:
-                # Erro 1060 é "Duplicate column name", que podemos ignorar
-                if "Duplicate column name 'user_id'" not in str(e):
+            # 3. Adicionar coluna 'user_id' se não existir
+            cursor.execute(f"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{DB_CONFIG['database']}' AND TABLE_NAME = 'umbrella_retirada' AND COLUMN_NAME = 'user_id'")
+            user_id_exists = cursor.fetchone()[0]
+            if not user_id_exists:
+                try:
+                    cursor.execute("ALTER TABLE umbrella_retirada ADD COLUMN user_id INT AFTER id")
+                    print("Coluna 'user_id' adicionada à tabela 'umbrella_retirada'.")
+                except Error as e:
                     print(f"Erro ao adicionar coluna 'user_id': {e}")
-                else:
-                    print("Coluna 'user_id' já existe na tabela 'umbrella_retirada'.")
+            else:
+                print("Coluna 'user_id' já existe na tabela 'umbrella_retirada'.")
             
-            # Verifica e adiciona a coluna 'ativo' se ela não existir
-            try:
-                cursor.execute("ALTER TABLE umbrella_retirada ADD COLUMN ativo BOOLEAN DEFAULT TRUE")
-                print("Coluna 'ativo' adicionada à tabela 'umbrella_retirada'.")
-            except Error as e:
-                # Erro 1060 é "Duplicate column name", que podemos ignorar
-                if "Duplicate column name 'ativo'" not in str(e):
+            # 4. Adicionar coluna 'ativo' se não existir
+            cursor.execute(f"SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{DB_CONFIG['database']}' AND TABLE_NAME = 'umbrella_retirada' AND COLUMN_NAME = 'ativo'")
+            ativo_exists = cursor.fetchone()[0]
+            if not ativo_exists:
+                try:
+                    cursor.execute("ALTER TABLE umbrella_retirada ADD COLUMN ativo BOOLEAN DEFAULT TRUE")
+                    print("Coluna 'ativo' adicionada à tabela 'umbrella_retirada'.")
+                except Error as e:
                     print(f"Erro ao adicionar coluna 'ativo': {e}")
-                else:
-                    print("Coluna 'ativo' já existe na tabela 'umbrella_retirada'.")
+            else:
+                print("Coluna 'ativo' já existe na tabela 'umbrella_retirada'.")
 
-            # Adiciona a restrição FOREIGN KEY user_id se ela ainda não existir
-            # Primeiro, verifica se a FK já existe (esta é uma forma mais robusta)
+            # 5. Adicionar a restrição FOREIGN KEY 'fk_umbrella_user_id' se não existir
             cursor.execute(f"""
                 SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
                 WHERE CONSTRAINT_TYPE = 'FOREIGN KEY'
@@ -129,14 +130,14 @@ def init_database():
                 print("Foreign Key 'fk_umbrella_user_id' já existe na tabela 'umbrella_retirada'.")
 
 
-            # SQL para criar a tabela umbrella_devolucao
+            # 6. Criar tabela umbrella_devolucao (se não existir)
             create_umbrella_devolucao_table_query = """
             CREATE TABLE IF NOT EXISTS umbrella_devolucao (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                retirada_id INT NOT NULL, # ID da retirada correspondente
+                retirada_id INT NOT NULL,
                 data_devolucao DATE NOT NULL,
                 hora_devolucao TIME NOT NULL,
-                cpf_usuario VARCHAR(11) NOT NULL, # CPF do usuário no momento da devolução
+                cpf_usuario VARCHAR(11) NOT NULL,
                 timestamp_devolucao DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (retirada_id) REFERENCES umbrella_retirada(id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -929,6 +930,7 @@ def registrar_devolucao():
 def check_umbrella_status():
     if 'user_id' not in session:
         # Se não estiver autenticado, não pode ter guarda-chuva ativo.
+        # Retorna 401 para o frontend lidar com redirecionamento para login
         return jsonify({'status': 'error', 'message': 'Não autenticado.'}), 401
     
     user_id = session['user_id']
