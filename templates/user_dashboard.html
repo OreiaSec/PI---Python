@@ -7,17 +7,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-        /* Variáveis CSS */
         :root {
             --sidebar-width-expanded: 250px;
-            --sidebar-width-collapsed: 80px;
-            --header-height: 70px;
+            --sidebar-width-collapsed: 80px; /* Largura da sidebar recolhida para ícones */
+            --header-height: 70px; /* Altura do novo cabeçalho */
             --main-bg-image: url('https://static8.depositphotos.com/1020804/816/i/450/depositphotos_8166031-stock-photo-abstract-background-night-sky-after.jpg');
             --sidebar-bg-color: rgba(11, 12, 42, 0.9);
             --sidebar-text-color: white;
             --sidebar-hover-bg: rgba(0, 123, 255, 0.3);
             --primary-color: #007BFF;
-            --danger-color: #dc3545;
+            --danger-color: #dc3545; /* Cor para logout */
         }
 
         body {
@@ -31,47 +30,47 @@
             display: flex;
             min-height: 100vh;
             color: var(--sidebar-text-color);
-            overflow-x: hidden;
+            overflow-x: hidden; /* Evita scroll horizontal */
         }
 
-        /* Início da Sidebar */
+        /* Sidebar */
         .sidebar {
-            width: var(--sidebar-width-collapsed);
+            width: var(--sidebar-width-collapsed); /* Começa recolhida */
             background-color: var(--sidebar-bg-color);
-            padding: 20px 0;
+            padding: 20px 0; /* Padding vertical, horizontal 0 para controle via padding dos itens */
             display: flex;
             flex-direction: column;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
-            position: fixed;
+            position: fixed; /* Fixa a sidebar */
             height: 100%;
             z-index: 1000;
-            transition: width 0.3s ease-in-out, left 0.3s ease-in-out;
-            overflow-y: auto;
-            align-items: flex-start;
+            transition: width 0.3s ease-in-out, left 0.3s ease-in-out; /* Transição para largura e posição */
+            overflow-y: auto; /* Para scroll se o conteúdo for grande */
+            align-items: flex-start; /* Alinha itens à esquerda */
         }
 
         .sidebar.expanded {
-            width: var(--sidebar-width-expanded);
+            width: var(--sidebar-width-expanded); /* Expande ao clicar */
         }
 
         .sidebar .logo {
-            width: 100%;
-            padding: 0 15px;
+            width: 100%; /* Ocupa a largura disponível na sidebar */
+            padding: 0 15px; /* Padding interno para a logo */
             margin-bottom: 30px;
-            text-align: center;
-            opacity: 0;
-            max-height: 0;
+            text-align: center; /* Centraliza a imagem */
+            opacity: 0; /* Esconde por padrão */
+            max-height: 0; /* Esconde visualmente */
             overflow: hidden;
             transition: opacity 0.1s ease, max-height 0.3s ease;
         }
         .sidebar.expanded .logo {
-            opacity: 1;
-            max-height: 150px;
+            opacity: 1; /* Mostra a logo quando expandida */
+            max-height: 150px; /* Ou um valor que comporte a logo */
         }
         .sidebar .logo img {
             width: 100%;
             height: auto;
-            max-width: 150px;
+            max-width: 150px; /* Limite máximo para a logo */
         }
 
         .sidebar h3 {
@@ -81,56 +80,56 @@
             padding-bottom: 10px;
             width: 100%;
             text-align: center;
-            opacity: 0;
-            max-height: 0;
+            opacity: 0; /* Esconde por padrão */
+            max-height: 0; /* Esconde visualmente */
             overflow: hidden;
             transition: opacity 0.1s ease, max-height 0.3s ease;
         }
         .sidebar.expanded h3 {
-            opacity: 1;
-            max-height: 50px;
+            opacity: 1; /* Mostra o título quando expandida */
+            max-height: 50px; /* Ou um valor que comporte o título */
         }
 
         .sidebar ul {
             list-style: none;
             padding: 0;
             width: 100%;
-            flex-grow: 1;
+            flex-grow: 1; /* Ocupa o espaço disponível para a lista de navegação */
         }
 
         .sidebar ul li {
-            margin-bottom: 5px;
+            margin-bottom: 5px; /* Ajustado para um espaçamento menor */
         }
 
         .sidebar ul li a {
             color: var(--sidebar-text-color);
             text-decoration: none;
-            padding: 15px 20px;
-            display: flex;
+            padding: 15px 20px; /* Mais padding para os links */
+            display: flex; /* Para alinhar ícone e texto */
             align-items: center;
             border-radius: 8px;
             transition: background-color 0.3s ease, transform 0.2s ease;
-            white-space: nowrap;
-            overflow: hidden;
+            white-space: nowrap; /* Impede quebra de linha do texto */
+            overflow: hidden; /* Esconde o texto que ultrapassa a largura */
         }
 
         .sidebar ul li a i {
-            margin-right: 15px;
+            margin-right: 15px; /* Mais espaço entre ícone e texto */
             font-size: 1.2em;
-            width: 25px;
+            width: 25px; /* Garante que o ícone tenha um espaço fixo */
             text-align: center;
         }
         
         .sidebar ul li a .link-text {
-            opacity: 0;
-            width: 0;
+            opacity: 0; /* Esconde o texto por padrão */
+            width: 0; /* Largura zero para não ocupar espaço */
             overflow: hidden;
             transition: opacity 0.1s ease, width 0.1s ease;
         }
 
         .sidebar.expanded ul li a .link-text {
-            opacity: 1;
-            width: auto;
+            opacity: 1; /* Mostra o texto quando expandido */
+            width: auto; /* Permite que o texto ocupe sua largura natural */
         }
 
         .sidebar ul li a:hover {
@@ -139,13 +138,13 @@
         }
 
         .sidebar ul li a.active {
-            background-color: var(--primary-color);
+            background-color: var(--primary-color); /* Destaque para o item ativo */
         }
         
-        /* Início do Header (Topo) */
+        /* Header (Topo) */
         .header {
             height: var(--header-height);
-            background-color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(255, 255, 255, 0.9); /* Fundo semi-transparente para o header */
             border-bottom: 1px solid #e0e0e0;
             display: flex;
             align-items: center;
@@ -153,19 +152,19 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             position: fixed;
             top: 0;
-            left: var(--sidebar-width-collapsed);
+            left: var(--sidebar-width-collapsed); /* Começa após a sidebar recolhida */
             right: 0;
             z-index: 999;
             transition: left 0.3s ease-in-out;
-            color: #333;
+            color: #333; /* Cor do texto no header */
         }
 
         .sidebar.expanded ~ .header {
-            left: var(--sidebar-width-expanded);
+            left: var(--sidebar-width-expanded); /* Move o header quando a sidebar expande */
         }
 
         .hamburger-menu {
-            font-size: 28px;
+            font-size: 28px; /* Ícone um pouco maior */
             cursor: pointer;
             color: #333;
             margin-right: 20px;
@@ -174,14 +173,14 @@
         .header h1 {
             margin: 0;
             font-size: 24px;
-            flex-grow: 1;
+            flex-grow: 1; /* Ocupa o espaço restante */
             color: #333;
         }
 
-        /* Início do User Dropdown */
+        /* User Dropdown Styles */
         .user-dropdown {
             position: relative;
-            margin-left: auto;
+            margin-left: auto; /* Empurra para a direita */
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -204,9 +203,9 @@
             box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
             z-index: 1;
             right: 0;
-            top: 100%;
+            top: 100%; /* Abaixo do botão */
             border-radius: 8px;
-            overflow: hidden;
+            overflow: hidden; /* Garante que os cantos arredondados funcionem */
         }
         .user-dropdown-content a {
             color: black;
@@ -226,12 +225,12 @@
             display: block;
         }
 
-        /* Início da Área de Conteúdo Principal */
+        /* Main Content Area */
         .main-content {
-            margin-left: var(--sidebar-width-collapsed);
-            padding-top: var(--header-height);
-            flex-grow: 1;
-            padding: calc(var(--header-height) + 30px) 30px 30px 30px;
+            margin-left: var(--sidebar-width-collapsed); /* Começa após a sidebar recolhida */
+            padding-top: var(--header-height); /* Espaçamento para o header fixo */
+            flex-grow: 1; /* Ocupa o restante da largura */
+            padding: calc(var(--header-height) + 30px) 30px 30px 30px; /* Ajusta o padding total */
             background-color: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(8px);
             box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.3);
@@ -240,12 +239,12 @@
             align-items: center;
             text-align: center;
             transition: margin-left 0.3s ease-in-out;
-            color: white;
-            min-height: calc(100vh - var(--header-height));
+            color: white; /* Cor do texto no conteúdo principal */
+            min-height: calc(100vh - var(--header-height)); /* Garante que o conteúdo principal ocupe o restante da altura */
         }
 
         .sidebar.expanded ~ .main-content {
-            margin-left: var(--sidebar-width-expanded);
+            margin-left: var(--sidebar-width-expanded); /* Move o conteúdo quando a sidebar expande */
         }
 
         .main-content h1 {
@@ -264,7 +263,7 @@
         .main-content .action-button {
             padding: 15px 30px;
             border: none;
-            background-color: #28a745;
+            background-color: #28a745; /* Cor padrão para retirar (verde) */
             color: white;
             border-radius: 10px;
             cursor: pointer;
@@ -275,8 +274,8 @@
             margin-top: 20px;
         }
 
-        .main-content .action-button.return-button {
-            background-color: #dc3545;
+        .main-content .action-button.return-button { /* Nova classe para o botão de devolver */
+            background-color: #dc3545; /* Cor para devolver (vermelho) */
         }
 
         .main-content .action-button:hover {
@@ -287,16 +286,16 @@
             background-color: #c82333;
         }
 
-        /* Início das Flash Messages */
+        /* Flash Messages */
         .flash-messages-container {
             width: 100%;
             max-width: 600px;
             margin-bottom: 20px;
-            position: fixed;
-            top: 20px;
+            position: fixed; /* Fixa as mensagens no topo */
+            top: 20px; /* Ajuste para não colidir com o header */
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1002;
+            z-index: 1002; /* Acima do overlay se necessário */
             text-align: center;
         }
         .flash-message, .flash-error {
@@ -306,14 +305,14 @@
             font-weight: bold;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: center; /* Centraliza o conteúdo da mensagem */
             gap: 10px;
-            opacity: 1;
-            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            opacity: 1; /* Começa visível */
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out; /* Transição para fade out */
         }
         .flash-message.hide, .flash-error.hide {
             opacity: 0;
-            transform: translateY(-20px);
+            transform: translateY(-20px); /* Move para cima enquanto some */
         }
         .flash-message {
             background-color: rgba(40, 167, 69, 0.1);
@@ -329,27 +328,27 @@
             font-size: 1.2em;
         }
 
-        /* Início do estilo para o mapa */
+        /* Estilo para o mapa */
         #mapid {
-            height: 400px;
-            width: 100%;
-            max-width: 800px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            margin-top: 30px;
-            background-color: #333;
+            height: 400px; /* Altura fixa para o mapa */
+            width: 100%; /* Largura total */
+            max-width: 800px; /* Largura máxima para o mapa */
+            border-radius: 15px; /* Bordas arredondadas */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); /* Sombra para destaque */
+            margin-top: 30px; /* Espaçamento superior */
+            background-color: #333; /* Cor de fundo enquanto o mapa carrega */
         }
 
-        /* Início do Overlay para o popup de retirada/devolução de guarda-chuva */
+        /* Overlay para o popup de retirada/devolução de guarda-chuva */
         .umbrella-overlay {
-            display: none;
+            display: none; /* Escondido por padrão */
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 1001;
+            background-color: rgba(0, 0, 0, 0.7); /* Fundo escurecido */
+            z-index: 1001; /* Acima de tudo */
             justify-content: center;
             align-items: center;
             flex-direction: column;
@@ -358,33 +357,33 @@
         }
 
         .umbrella-overlay.active {
-            display: flex;
+            display: flex; /* Mostra quando ativo */
             opacity: 1;
         }
 
         .umbrella-overlay-content {
-            background-color: rgba(255, 255, 255, 0.95);
+            background-color: rgba(255, 255, 255, 0.95); /* Fundo semi-transparente claro */
             padding: 40px;
             border-radius: 15px;
             text-align: center;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-            color: #333;
+            color: #333; /* Cor do texto no popup */
             max-width: 90%;
             width: 400px;
-            transform: scale(0.9);
+            transform: scale(0.9); /* Começa um pouco menor */
             transition: transform 0.3s ease-in-out;
-            position: relative;
+            position: relative; /* Para posicionar o botão de fechar */
         }
 
         .umbrella-overlay.active .umbrella-overlay-content {
-            transform: scale(1);
+            transform: scale(1); /* Expande para o tamanho normal */
         }
 
         .umbrella-overlay-content i.fa-umbrella {
-            font-size: 80px;
-            color: var(--primary-color);
+            font-size: 80px; /* Tamanho do ícone de guarda-chuva */
+            color: var(--primary-color); /* Cor do ícone */
             margin-bottom: 20px;
-            animation: bounce 0.8s infinite alternate;
+            animation: bounce 0.8s infinite alternate; /* Animação simples */
         }
 
         @keyframes bounce {
@@ -403,18 +402,18 @@
             margin-bottom: 20px;
         }
 
-        /* Estilo para o código gerado como um display */
+        /* Estiliza o código gerado como um display */
         .generated-code {
-            font-size: 2.2em;
+            font-size: 2.2em; /* Tamanho maior para o código */
             font-weight: bold;
-            color: var(--primary-color);
+            color: var(--primary-color); /* Cor destacada */
             background-color: #e0e0e0;
             padding: 15px 20px;
             border-radius: 8px;
             margin: 25px 0;
-            letter-spacing: 3px;
-            display: inline-block;
-            min-width: 150px;
+            letter-spacing: 3px; /* Espaçamento entre caracteres */
+            display: inline-block; /* Para o padding funcionar */
+            min-width: 150px; /* Garante que a caixa tenha um tamanho mínimo */
         }
 
 
@@ -436,28 +435,28 @@
         /* Media Queries para Responsividade */
         @media (max-width: 768px) {
             .sidebar {
-                width: 0;
-                left: -var(--sidebar-width-expanded);
+                width: 0; /* Começa totalmente escondida em mobile */
+                left: -var(--sidebar-width-expanded); /* Fora da tela */
             }
             .sidebar.expanded {
                 width: var(--sidebar-width-expanded);
-                left: 0;
+                left: 0; /* Desliza para dentro */
             }
             .header {
-                left: 0;
+                left: 0; /* Header sempre começa em 0 em mobile */
                 width: 100%;
             }
             .sidebar.expanded ~ .header {
-                left: var(--sidebar-width-expanded);
+                left: var(--sidebar-width-expanded); /* Empurra o header ao expandir */
                 width: calc(100% - var(--sidebar-width-expanded));
             }
             .main-content {
-                margin-left: 0;
+                margin-left: 0; /* Conteúdo sempre começa em 0 em mobile */
                 width: 100%;
-                padding: calc(var(--header-height) + 20px) 20px 20px 20px;
+                padding: calc(var(--header-height) + 20px) 20px 20px 20px; /* Ajusta padding */
             }
             .sidebar.expanded ~ .main-content {
-                margin-left: var(--sidebar-width-expanded);
+                margin-left: var(--sidebar-width-expanded); /* Empurra o conteúdo ao expandir */
                 width: calc(100% - var(--sidebar-width-expanded));
             }
             
@@ -470,7 +469,7 @@
                 right: 0;
                 bottom: 0;
                 background: rgba(0, 0, 0, 0.5);
-                z-index: 990;
+                z-index: 990; /* Abaixo da sidebar, acima do conteúdo */
             }
 
             .main-content h1 {
@@ -480,7 +479,7 @@
                 font-size: 1em;
             }
             #mapid {
-                height: 300px;
+                height: 300px; /* Ajusta a altura do mapa em mobile */
             }
             .umbrella-overlay-content {
                 padding: 20px;
@@ -554,9 +553,9 @@
         <div class="umbrella-overlay-content">
             <button class="btn-close" id="closeUmbrellaOverlay">&times;</button>
             <i class="fas fa-umbrella"></i>
-            <h2 id="overlayTitle">Seu Código de Retirada</h2>
+            <h2 id="overlayTitle">Seu Código de Retirada</h2> {# Título dinâmico #}
             <div class="generated-code" id="retrievalCodeDisplay"></div>
-            <button class="action-button" id="confirmActionButton">OK</button>
+            <button class="action-button" id="confirmActionButton">OK</button> {# Botão genérico para ações #}
         </div>
     </div>
 
@@ -572,30 +571,36 @@
         const umbrellaOverlay = document.getElementById('umbrellaOverlay');
         const closeUmbrellaOverlay = document.getElementById('closeUmbrellaOverlay');
         const retrievalCodeDisplay = document.getElementById('retrievalCodeDisplay');
-        const confirmActionButton = document.getElementById('confirmActionButton');
-        const overlayTitle = document.getElementById('overlayTitle');
+        const confirmActionButton = document.getElementById('confirmActionButton'); // Botão OK/Confirmar
+        const overlayTitle = document.getElementById('overlayTitle'); // Título do overlay
 
+        // Variável hasUmbrella será inicializada após a chamada AJAX em DOMContentLoaded
         let hasUmbrella = false; 
 
         function toggleSidebar() {
             sidebar.classList.toggle('expanded');
+            // Controla a classe sidebar-open no body para o overlay em mobile
             document.body.classList.toggle('sidebar-open', sidebar.classList.contains('expanded') && window.innerWidth <= 768);
+            // Previne scroll do corpo em mobile quando sidebar está aberta
             document.body.style.overflow = sidebar.classList.contains('expanded') && window.innerWidth <= 768 ? 'hidden' : '';
 
+            // Ajusta a visibilidade do texto da sidebar para acompanhar a expansão
             const linkTexts = document.querySelectorAll('.sidebar .link-text');
             const logo = document.querySelector('.sidebar .logo');
             const h3 = document.querySelector('.sidebar h3');
 
             if (sidebar.classList.contains('expanded')) {
+                // Ao expandir, mostrar logo e título
                 logo.style.opacity = 1;
-                logo.style.maxHeight = '150px';
+                logo.style.maxHeight = '150px'; // Ou um valor que comporte a logo
                 h3.style.opacity = 1;
-                h3.style.maxHeight = '50px';
+                h3.style.maxHeight = '50px'; // Ou um valor que comporte o título
                 linkTexts.forEach(span => {
                     span.style.opacity = 1;
                     span.style.width = 'auto';
                 });
             } else {
+                // Ao recolher, esconder logo e título
                 logo.style.opacity = 0;
                 logo.style.maxHeight = '0';
                 h3.style.opacity = 0;
@@ -629,12 +634,13 @@
                 <i class="fas fa-${category === 'message' ? 'check-circle' : 'exclamation-triangle'}"></i>
                 ${message}
             `;
+            // Se já existir um container, adicione a mensagem a ele. Senão, crie um.
             let container = document.getElementById('flashMessagesContainer');
             if (!container) {
                 container = document.createElement('div');
                 container.id = 'flashMessagesContainer';
                 container.className = 'flash-messages-container';
-                document.body.prepend(container);
+                document.body.prepend(container); // Adiciona no início do body
             }
             container.appendChild(messageDiv);
 
@@ -642,11 +648,12 @@
                 messageDiv.classList.add('hide');
                 messageDiv.addEventListener('transitionend', () => {
                     messageDiv.remove();
+                    // Opcional: remover o container se estiver vazio após remover a mensagem
                     if (container && container.children.length === 0) {
                         container.remove();
                     }
                 });
-            }, 5000);
+            }, 5000); // Mensagens somem após 5 segundos
         }
 
         // Função para atualizar o estado do botão (Retirar/Devolver)
@@ -668,8 +675,9 @@
 
                 if (data.status === 'success') {
                     hasUmbrella = data.has_umbrella;
-                    updateActionButtonState();
+                    updateActionButtonState(); // Atualiza o botão com base no status do backend
                 } else if (response.status === 401) {
+                    // Usuário não autenticado, redireciona para o login
                     window.location.href = '/'; 
                 } else {
                     console.error('Erro ao verificar status do guarda-chuva:', data.message);
@@ -711,9 +719,9 @@
 
                 if (data.status === 'success') {
                     showFlashMessage(data.message, 'message');
-                    hasUmbrella = true;
-                    updateActionButtonState();
-                    umbrellaOverlay.classList.remove('active');
+                    hasUmbrella = true; // Atualiza o estado local
+                    updateActionButtonState(); // Atualiza o texto do botão
+                    umbrellaOverlay.classList.remove('active'); // Fecha o overlay
                 } else {
                     showFlashMessage(data.message, 'error');
                 }
@@ -735,9 +743,9 @@
 
                 if (data.status === 'success') {
                     showFlashMessage(data.message, 'message');
-                    hasUmbrella = false;
-                    updateActionButtonState();
-                    umbrellaOverlay.classList.remove('active');
+                    hasUmbrella = false; // Atualiza o estado local
+                    updateActionButtonState(); // Atualiza o texto do botão
+                    umbrellaOverlay.classList.remove('active'); // Fecha o overlay
                 } else {
                     showFlashMessage(data.message, 'error');
                 }
@@ -787,4 +795,88 @@
                     span.style.width = 'auto';
                 });
                 document.querySelector('.sidebar .logo').style.opacity = 1;
-                document.que
+                document.querySelector('.sidebar .logo').style.maxHeight = '150px';
+                document.querySelector('.sidebar h3').style.opacity = 1;
+                document.querySelector('.sidebar h3').style.maxHeight = '50px';
+
+                document.body.classList.remove('sidebar-open');
+                document.body.style.overflow = '';
+            } else {
+                sidebar.classList.remove('expanded');
+                // Assegura que o texto da sidebar desaparece no mobile
+                document.querySelectorAll('.sidebar .link-text').forEach(span => {
+                    span.style.opacity = 0;
+                    span.style.width = '0';
+                });
+                document.querySelector('.sidebar .logo').style.opacity = 0;
+                document.querySelector('.sidebar .logo').style.maxHeight = '0';
+                document.querySelector('.sidebar h3').style.opacity = 0;
+                document.querySelector('.sidebar h3').style.maxHeight = '0';
+
+                document.body.classList.remove('sidebar-open');
+                document.body.style.overflow = '';
+            }
+            userDropdown.classList.remove('show');
+        });
+
+        // Initial state when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Inicializa o estado da sidebar (desktop/mobile)
+            if (window.innerWidth > 768) {
+                sidebar.classList.add('expanded');
+            } else {
+                sidebar.classList.remove('expanded');
+            }
+            // Chama toggleSidebar para garantir que os elementos internos (logo, texto) se ajustem
+            toggleSidebar();
+
+            // NOVO: Faz as mensagens de flash sumirem automaticamente
+            if (flashMessagesContainer) {
+                const messages = flashMessagesContainer.querySelectorAll('.flash-message, .flash-error');
+                messages.forEach(messageDiv => {
+                    setTimeout(() => {
+                        messageDiv.classList.add('hide');
+                        messageDiv.addEventListener('transitionend', () => {
+                            messageDiv.remove();
+                        });
+                    }, 5000); // Mensagens somem após 5 segundos
+                });
+            }
+
+            // Inicializa o mapa Leaflet APÓS o DOM estar carregado
+            var map = L.map('mapid').setView([-23.5505, -46.6333], 13); // Centrado em São Paulo, zoom 13
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Define o ícone personalizado usando sua logo.png da pasta static
+            var umbrellaIcon = L.icon({
+                iconUrl: '/static/logo.png', // Caminho para sua logo.png na pasta static
+                iconSize: [40, 40], // Tamanho ideal da sua logo (ajuste conforme necessário)
+                iconAnchor: [20, 40], // Metade da largura, altura total para a base do ícone
+                popupAnchor: [0, -40] // Para o popup aparecer acima da logo
+            });
+
+            // Adiciona marcadores para os pontos de retirada
+            L.marker([-23.5466, -46.6358], {icon: umbrellaIcon}).addTo(map)
+                .bindPopup('<b>Ponto de Retirada - Leão</b><br>Loja Do Dinho GUARDA-CHUVA ATACADO');
+
+            L.marker([-23.5413, -46.6353], {icon: umbrellaIcon}).addTo(map)
+                .bindPopup('<b>Ponto de Retirada - Tigre</b><br>Lucky star Distribuidora Guarda-chuva atacado');
+
+            L.marker([-23.5623, -46.6475], {icon: umbrellaIcon}).addTo(map)
+                .bindPopup('<b>Ponto de Retirada - Lobo</b><br>Voyagem guarda chuvas');
+
+            L.marker([-23.5839, -46.6403], {icon: umbrellaIcon}).addTo(map)
+                    .bindPopup('<b>Ponto de Retirada - Urso</b><br>Ao Para Água Presentes e Consertos de Guarda-chuvas');
+
+            L.marker([-23.5042, -46.4950], {icon: umbrellaIcon}).addTo(map)
+                .bindPopup('<b>Ponto de Retirada - Águia</b><br>JLV Fabrica de Guarda-Sóis e Ombrelones Personalizados');
+            
+            // NOVO: Chama a função para verificar o estado do guarda-chuva e atualizar o botão
+            await checkUmbrellaStatusAndSetButton();
+        });
+    </script>
+</body>
+</html>
