@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template
+from flask import Flask, request, render_template_string, redirect, url_for, flash, session, render_template, jsonify
 import mysql.connector
 from mysql.connector import Error
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -71,7 +71,7 @@ def init_database():
             create_umbrella_retirada_table_query = """
             CREATE TABLE IF NOT EXISTS umbrella_retirada (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT, # Adicionado para vincular à tabela users_from_bb
+                user_id INT,
                 nome_usuario VARCHAR(255) NOT NULL,
                 email VARCHAR(255) NOT NULL,
                 telefone VARCHAR(50) NOT NULL,
@@ -166,7 +166,7 @@ def verificar_login(email, senha):
     try:
         connection = get_db_connection()
         if not connection:
-            return False, "Erro de conexão com o banco de dados!", None, None, None, None # Adicione None para cpf
+            return False, "Erro de conexão com o banco de dados!", None, None, None, None
         
         cursor = connection.cursor(dictionary=True)
 
@@ -190,42 +190,7 @@ def verificar_login(email, senha):
             cursor.close()
             connection.close()
 
-# Código HTML com as correções aplicadas (Este bloco não é usado diretamente pelo Flask, é um placeholder)
-html_code = """
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Bubble SA - Cadastro e Login</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-
-    <style>
-        /* ... Estilos CSS ... (Conteúdo do CSS está no dash.txt) */
-    </style>
-
-    <script>
-        // ... Script JS ... (Conteúdo do JS está no dash.txt)
-    </script>
-</head>
-<body>
-    <!-- ... HTML do dashboard, movido para user_dashboard.html ... -->
-</body>
-</html>
-"""
-
-@app.route('/')
-def index():
-    # Verifica se o usuário já está logado
-    if 'user_id' in session: # Usando user_id na sessão para verificar o login
-        return redirect(url_for('dashboard'))
-    # Renderiza o HTML do cadastro/login que você forneceu anteriormente
-    return render_template_string(html_code_for_index_page) # Variável que conterá o HTML do INDEX_.txt
-
-# Definir a variável html_code_for_index_page com o conteúdo de INDEX_.txt
-# Este é um placeholder, na prática você deve ler o conteúdo do arquivo INDEX_.txt
-# e atribuir a esta variável ou usar render_template('index.html')
-# Vou usar um placeholder para que o código seja runnable, mas você usaria render_template('index.html')
+# Código HTML com as correções aplicadas (Este bloco é para o index.html, mas mantemos como string aqui para o Flask)
 html_code_for_index_page = """
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -234,7 +199,6 @@ html_code_for_index_page = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Bubble Support - Login Técnico</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         /* Variáveis CSS */
         :root {
@@ -648,17 +612,13 @@ html_code_for_index_page = """
 </body>
 </html>
 """
-# Para que a rota '/' possa renderizar o HTML do INDEX_.txt, precisamos defini-lo.
-# Substitua o placeholder `html_code_for_index_page` pelo conteúdo do seu `INDEX_.txt` real.
-# No seu ambiente local, é mais comum usar `render_template('index.html')`
-# assumindo que o arquivo 'index.html' está na pasta 'templates'.
-# Se 'INDEX_.txt' for o seu 'index.html', então você faria:
-# from flask import render_template
-# @app.route('/')
-# def index():
-#     if 'user_id' in session:
-#         return redirect(url_for('dashboard'))
-#     return render_template('index.html')
+
+@app.route('/')
+def index():
+    # Verifica se o usuário já está logado
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    return render_template_string(html_code_for_index_page)
 
 @app.route('/health')
 def health_check():
@@ -704,7 +664,7 @@ def cadastrar():
 
     if sucesso:
         flash(mensagem, 'message')
-        return jsonify({"success": True, "message": mensagem, "redirect": url_for('index')})
+        return jsonify({"success": True, "message": mensagem, "redirect": url_for('index')}) 
     else:
         flash(mensagem, 'error')
         return jsonify({"success": False, "message": mensagem})
@@ -718,7 +678,7 @@ def login():
         flash('Email e senha são obrigatórios!', 'error')
         return jsonify({"success": False, "message": "Email e senha são obrigatórios!"})
 
-    sucesso, user_name, user_email, user_phone, user_cpf, user_id = verificar_login(email, senha) # Adicionado user_cpf
+    sucesso, user_name, user_email, user_phone, user_cpf, user_id = verificar_login(email, senha)
     
     if sucesso:
         session['user_id'] = user_id
@@ -737,6 +697,7 @@ def dashboard():
     if 'user_id' in session:
         user_id = session['user_id']
         has_umbrella = check_user_has_umbrella(user_id) # Verifica se o usuário tem guarda-chuva retirado
+        # Renderiza 'user_dashboard.html' e passa a variável has_umbrella
         return render_template('user_dashboard.html', user_name=session['user_name'], has_umbrella=has_umbrella)
     else:
         flash('Você precisa fazer login para acessar esta página.', 'error')
@@ -765,7 +726,7 @@ def check_user_has_umbrella(user_id):
         
         cursor = connection.cursor(dictionary=True)
         # Verifica se há alguma retirada ativa para o user_id
-        query = "SELECT id FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE LIMIT 1"
+        query = "SELECT id FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE ORDER BY timestamp_retirada DESC LIMIT 1"
         cursor.execute(query, (user_id,))
         result = cursor.fetchone()
         return result is not None
@@ -777,13 +738,14 @@ def check_user_has_umbrella(user_id):
             cursor.close()
             connection.close()
 
-# --- NOVA ROTA PARA REGISTRAR RETIRADA DE GUARDA-CHUVA ---
+# --- ROTA PARA REGISTRAR RETIRADA DE GUARDA-CHUVA ---
 @app.route('/registrar_retirada', methods=['POST'])
 def registrar_retirada():
     if 'user_id' not in session:
         return jsonify({'status': 'error', 'message': 'Não autenticado. Faça login para registrar a retirada.'}), 401
     
     user_id = session['user_id']
+    
     # Primeiro, verifica se o usuário já tem um guarda-chuva ativo
     if check_user_has_umbrella(user_id):
         return jsonify({'status': 'error', 'message': 'Você já tem um guarda-chuva retirado. Por favor, devolva-o antes de retirar outro.'}), 400
@@ -834,7 +796,7 @@ def registrar_retirada():
             cursor.close()
             connection.close()
 
-# --- NOVA ROTA PARA REGISTRAR DEVOLUÇÃO DE GUARDA-CHUVA ---
+# --- ROTA PARA REGISTRAR DEVOLUÇÃO DE GUARDA-CHUVA ---
 @app.route('/registrar_devolucao', methods=['POST'])
 def registrar_devolucao():
     if 'user_id' not in session:
@@ -855,6 +817,7 @@ def registrar_devolucao():
         cursor = connection.cursor(dictionary=True)
 
         # 1. Encontrar a última retirada ativa do usuário
+        # Use user_id para filtrar e garantir que a retirada pertence ao usuário logado
         query_ultima_retirada = "SELECT id, codigo_guarda_chuva FROM umbrella_retirada WHERE user_id = %s AND ativo = TRUE ORDER BY timestamp_retirada DESC LIMIT 1"
         cursor.execute(query_ultima_retirada, (user_id,))
         ultima_retirada = cursor.fetchone()
@@ -899,6 +862,7 @@ def registrar_devolucao():
 @app.route('/check_umbrella_status', methods=['GET'])
 def check_umbrella_status():
     if 'user_id' not in session:
+        # Se não estiver autenticado, não pode ter guarda-chuva ativo.
         return jsonify({'status': 'error', 'message': 'Não autenticado.'}), 401
     
     user_id = session['user_id']
